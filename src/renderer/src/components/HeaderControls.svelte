@@ -104,7 +104,6 @@
         <span>{emailCount} emails</span>
         <span>{selectedCount} selected</span>
         <span class="text-brand/80">{markedCount} marked</span>
-        <span>{markedItemCount} items</span>
       </div>
       <button
         onclick={onToggleView}

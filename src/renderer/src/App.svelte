@@ -31,7 +31,6 @@
   let startWidth = 0;
 
   let hoveredEmail = $state<EmailMsg | null>(null);
-  let mousePos = $state({ x: 0, y: 0 });
   let editingOpen = $state(false);
   let editingItem = $state<MarkedItem | null>(null);
   let editingFrom = $state('');
@@ -236,7 +235,6 @@
   function handleMouseMove(e: MouseEvent, email: EmailMsg) {
     if (e.ctrlKey) {
       hoveredEmail = email;
-      mousePos = { x: e.clientX, y: e.clientY };
     } else {
       hoveredEmail = null;
     }
@@ -478,8 +476,8 @@
         onRowClick={handleRowClick}
         onRowRightClick={handleRowRightClick}
         onRowMouseDown={handleRowMouseDown}
-        onSubjectMouseMove={handleMouseMove}
-        onSubjectMouseLeave={() => hoveredEmail = null}
+        onRowMouseMove={handleMouseMove}
+        onRowMouseLeave={() => hoveredEmail = null}
       />
     {:else}
       <MarkedItemsView
@@ -491,12 +489,20 @@
   </div>
 
   {#if hoveredEmail}
-    <div
-      class="fixed z-50 p-4 bg-surface-active border border-brand/50 rounded-lg shadow-2xl max-w-md pointer-events-none"
-      style="left: {mousePos.x + 20}px; top: {mousePos.y + 20}px;"
-    >
-      <div class="text-[10px] text-brand font-mono mb-2 uppercase tracking-tighter">Snippet Peek</div>
-      <div class="text-xs text-accent/90 italic leading-relaxed">
+    <div class="fixed bottom-4 right-4 z-50 w-[min(420px,calc(100vw-32px))] rounded-lg border border-brand/50 bg-surface-active p-4 shadow-2xl pointer-events-none">
+      <div class="mb-3 flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-brand">Email Peek</div>
+          <div class="truncate text-sm font-semibold text-accent">{hoveredEmail.from}</div>
+        </div>
+        <div class="shrink-0 whitespace-nowrap pt-1 text-right font-mono text-[10px] uppercase text-accent-dim">
+          {formatEmailDate(hoveredEmail)}
+        </div>
+      </div>
+      <div class="mb-2 line-clamp-2 text-sm font-medium text-accent/90">
+        {hoveredEmail.subject || '(No Subject)'}
+      </div>
+      <div class="max-h-32 overflow-hidden text-xs leading-relaxed text-accent/75">
         {hoveredEmail.snippet}
       </div>
     </div>

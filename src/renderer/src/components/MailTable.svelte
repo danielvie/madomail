@@ -16,8 +16,8 @@
     onRowClick,
     onRowRightClick,
     onRowMouseDown,
-    onSubjectMouseMove,
-    onSubjectMouseLeave
+    onRowMouseMove,
+    onRowMouseLeave
   }: {
     emails: EmailMsg[];
     loading: boolean;
@@ -32,8 +32,8 @@
     onRowClick: (event: MouseEvent | KeyboardEvent, email: EmailMsg) => void;
     onRowRightClick: (event: MouseEvent, id: string) => void;
     onRowMouseDown: (event: MouseEvent, id: string) => void;
-    onSubjectMouseMove: (event: MouseEvent, email: EmailMsg) => void;
-    onSubjectMouseLeave: () => void;
+    onRowMouseMove: (event: MouseEvent, email: EmailMsg) => void;
+    onRowMouseLeave: () => void;
   } = $props();
 
   let altPressed = $state(false);
@@ -125,6 +125,8 @@
         onclick={(e) => onRowClick(e, email)}
         oncontextmenu={(e) => onRowRightClick(e, email.id)}
         onmousedown={(e) => onRowMouseDown(e, email.id)}
+        onmousemove={(e) => onRowMouseMove(e, email)}
+        onmouseleave={onRowMouseLeave}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onRowClick(e, email); }}
       >
         {#if markedActions[email.id]}
@@ -142,11 +144,7 @@
         <div class="bg-transparent w-1"></div>
 
         <div
-          role="tooltip"
-          aria-label="Subject with peek"
           class="p-3 truncate flex items-center gap-2"
-          onmousemove={(e) => onSubjectMouseMove(e, email)}
-          onmouseleave={onSubjectMouseLeave}
         >
           <span class="truncate {selectedIds.has(email.id) ? 'text-accent' : 'text-accent/80'}">{email.subject || '(No Subject)'}</span>
         </div>
