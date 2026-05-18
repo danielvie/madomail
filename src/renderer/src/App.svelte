@@ -31,6 +31,7 @@
   let startWidth = 0;
 
   let hoveredEmail = $state<EmailMsg | null>(null);
+  let peekExpanded = $state(false);
   let editingOpen = $state(false);
   let editingItem = $state<MarkedItem | null>(null);
   let editingFrom = $state('');
@@ -234,9 +235,8 @@
 
   function handleMouseMove(e: MouseEvent, email: EmailMsg) {
     if (e.ctrlKey) {
+      if (hoveredEmail?.id !== email.id) peekExpanded = false;
       hoveredEmail = email;
-    } else {
-      hoveredEmail = null;
     }
   }
 
@@ -477,7 +477,7 @@
         onRowRightClick={handleRowRightClick}
         onRowMouseDown={handleRowMouseDown}
         onRowMouseMove={handleMouseMove}
-        onRowMouseLeave={() => hoveredEmail = null}
+        onRowMouseLeave={() => {}}
       />
     {:else}
       <MarkedItemsView
@@ -489,21 +489,58 @@
   </div>
 
   {#if hoveredEmail}
-    <div class="fixed bottom-4 right-4 z-50 w-[min(420px,calc(100vw-32px))] rounded-lg border border-brand/50 bg-surface-active p-4 shadow-2xl pointer-events-none">
+    <div
+      role="button"
+      tabindex="0"
+      aria-label={peekExpanded ? 'Collapse email peek' : 'Expand email peek'}
+      onclick={() => peekExpanded = !peekExpanded}
+      onkeydown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          peekExpanded = !peekExpanded;
+        }
+      }}
+      class="fixed bottom-4 right-4 z-50 w-[min(520px,calc(100vw-32px))] {peekExpanded ? 'max-h-[calc(100vh-96px)]' : ''} rounded-lg border border-brand/50 bg-surface-active p-4 text-left shadow-2xl transition-all hover:border-brand/70"
+    >
       <div class="mb-3 flex items-start justify-between gap-4">
         <div class="min-w-0">
           <div class="font-mono text-[10px] uppercase tracking-wider text-brand">Email Peek</div>
           <div class="truncate text-sm font-semibold text-accent">{hoveredEmail.from}</div>
         </div>
-        <div class="shrink-0 whitespace-nowrap pt-1 text-right font-mono text-[10px] uppercase text-accent-dim">
-          {formatEmailDate(hoveredEmail)}
+        <div class="flex shrink-0 items-start gap-2">
+          <div class="whitespace-nowrap pt-1 text-right font-mono text-[10px] uppercase text-accent-dim">
+            {formatEmailDate(hoveredEmail)}
+          </div>
+          <button
+            type="button"
+            aria-label={peekExpanded ? 'Collapse email peek' : 'Expand email peek'}
+            onclick={(event) => {
+              event.stopPropagation();
+              peekExpanded = !peekExpanded;
+            }}
+            class="rounded border border-brand/30 bg-brand/10 px-2 py-1 font-mono text-[10px] uppercase text-brand transition-colors hover:border-brand/60 hover:bg-brand/20"
+          >
+            {peekExpanded ? 'Collapse' : 'Expand'}
+          </button>
+          <button
+            type="button"
+            aria-label="Close email peek"
+            onclick={(event) => {
+              event.stopPropagation();
+              hoveredEmail = null;
+              peekExpanded = false;
+            }}
+            class="rounded border border-accent/20 bg-surface-hover px-2 py-1 font-mono text-[10px] uppercase text-accent-dim transition-colors hover:border-brand/40 hover:text-brand"
+          >
+            Close
+          </button>
         </div>
       </div>
-      <div class="mb-2 line-clamp-2 text-sm font-medium text-accent/90">
+      <div class="mb-2 {peekExpanded ? '' : 'line-clamp-2'} text-sm font-medium text-accent/90">
         {hoveredEmail.subject || '(No Subject)'}
       </div>
-      <div class="max-h-32 overflow-hidden text-xs leading-relaxed text-accent/75">
-        {hoveredEmail.snippet}
+      <div class="{peekExpanded ? 'max-h-[calc(100vh-240px)] overflow-y-auto whitespace-pre-wrap pr-2' : 'max-h-32 overflow-hidden'} text-xs leading-relaxed text-accent/75">
+        {peekExpanded ? hoveredEmail.body || hoveredEmail.snippet : hoveredEmail.snippet}
       </div>
     </div>
   {/if}

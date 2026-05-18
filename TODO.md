@@ -4,3 +4,18 @@
 - [x] Verify the renderer type/check command passes
 - [x] Make Ctrl-hover preview work across the whole email row
 - [x] Verify row-wide Ctrl-hover change
+- [x] Keep email peek open after Ctrl is released or the row is left
+- [x] Add explicit close control to the peek panel
+- [x] Verify persistent peek behavior
+- [x] Add click-to-expand behavior to the peek panel
+- [x] Verify expanded peek behavior
+- [x] Add visible expand/collapse control to the peek panel
+- [x] Verify visible expand control
+- [x] Grow the whole peek window in expanded mode
+- [x] Verify expanded window sizing
+- [x] Change peek expansion to height-only
+- [x] Verify height-only expansion
+- [x] Find where email preview content is fetched and shaped
+- [x] Fetch/store full message content for peek expansion
+- [x] Render snippet in compact mode and full content in expanded mode
+- [x] Verify full-content peek behavior

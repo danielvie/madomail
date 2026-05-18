@@ -84,6 +84,37 @@ How to fix this:
   return authClient
 }
 
+function decodeBase64Url(data?: string | null) {
+  if (!data) return ''
+
+  const normalized = data.replace(/-/g, '+').replace(/_/g, '/')
+  return Buffer.from(normalized, 'base64').toString('utf8')
+}
+
+function extractPlainTextBody(payload: any): string {
+  if (!payload) return ''
+
+  if (payload.mimeType === 'text/plain') {
+    return decodeBase64Url(payload.body?.data)
+  }
+
+  for (const part of payload.parts || []) {
+    const body = extractPlainTextBody(part)
+    if (body) return body
+  }
+
+  if (payload.mimeType === 'text/html') {
+    return decodeBase64Url(payload.body?.data)
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  return ''
+}
+
 export function setupGmailIPC() {
   ipcMain.handle('gmail-fetch-inbox', async () => {
     try {
@@ -102,7 +133,7 @@ export function setupGmailIPC() {
           const m = await gmail.users.messages.get({
             userId: 'me',
             id: msg.id!,
-            format: 'metadata',
+            format: 'full',
             metadataHeaders: ['From', 'Subject', 'Date']
           })
           
@@ -118,6 +149,7 @@ export function setupGmailIPC() {
             id: m.data.id,
             threadId: m.data.threadId,
             snippet: m.data.snippet,
+            body: extractPlainTextBody(m.data.payload) || m.data.snippet,
             from,
             subject,
             date

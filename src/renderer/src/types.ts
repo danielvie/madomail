@@ -2,6 +2,7 @@ export type EmailMsg = {
   id: string;
   threadId: string;
   snippet: string;
+  body: string;
   from: string;
   subject: string;
   date: string;
