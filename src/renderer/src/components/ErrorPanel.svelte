@@ -1,41 +1,39 @@
 <script lang="ts">
-  let {
-    error,
-    authCode,
-    actionInProgress,
-    onAuthCodeChange,
-    onAuthorize
-  }: {
-    error: string;
-    authCode: string;
-    actionInProgress: boolean;
-    onAuthCodeChange: (value: string) => void;
-    onAuthorize: () => void;
-  } = $props();
+  let { error }: { error: string } = $props()
+
+  let copied = $state(false)
+
+  async function copyError() {
+    try {
+      await navigator.clipboard.writeText(error)
+      copied = true
+      setTimeout(() => {
+        copied = false
+      }, 1200)
+    } catch (copy_error) {
+      console.error('Failed to copy error message', copy_error)
+    }
+  }
 </script>
 
-<div class="mb-4 p-4 bg-danger/10 border border-danger/50 text-danger rounded-lg text-xs font-mono shrink-0 whitespace-pre-wrap break-all leading-relaxed flex flex-col gap-3">
-  <div>
+<div
+  class="mb-4 rounded-lg border border-danger/50 bg-danger/10 p-4 text-danger text-xs font-mono shrink-0 whitespace-pre-wrap break-all leading-relaxed"
+>
+  <div class="mb-3 flex items-start justify-between gap-3">
     <strong>ERROR:</strong>
-    {@html error.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="underline hover:text-white transition-colors">$1</a>')}
+    <button
+      type="button"
+      onclick={copyError}
+      class="rounded border border-danger/40 bg-danger/10 px-2 py-1 text-[10px] uppercase tracking-wider text-danger transition-all hover:bg-danger/20 hover:text-white"
+    >
+      {copied ? 'Copied' : 'Copy Msg'}
+    </button>
   </div>
 
-  {#if error.includes('TOKEN REQUIRED')}
-    <div class="flex gap-2 items-center p-2 bg-danger/20 rounded border border-danger/30">
-      <input
-        type="text"
-        value={authCode}
-        oninput={(event) => onAuthCodeChange(event.currentTarget.value)}
-        placeholder="Paste authorization code here..."
-        class="flex-1 bg-surface text-danger px-3 py-1.5 rounded border border-danger/50 focus:outline-none focus:border-brand text-xs"
-      />
-      <button
-        onclick={onAuthorize}
-        disabled={!authCode || actionInProgress}
-        class="px-4 py-1.5 bg-brand text-base font-bold rounded uppercase text-[10px] hover:bg-brand/80 transition-all disabled:opacity-50"
-      >
-        Authorize
-      </button>
-    </div>
-  {/if}
+  <div>
+    {@html error.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" class="underline hover:text-white transition-colors">$1</a>'
+    )}
+  </div>
 </div>

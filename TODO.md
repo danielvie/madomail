@@ -19,3 +19,5 @@
 - [x] Fetch/store full message content for peek expansion
 - [x] Render snippet in compact mode and full content in expanded mode
 - [x] Verify full-content peek behavior
+- [x] Review `CONTRACT.md` decisions for marked items, list behavior, and query behavior
+- [x] Write a Markdown requirements file in the project root

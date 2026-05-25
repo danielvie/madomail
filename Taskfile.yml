@@ -1,32 +1,43 @@
 version: '3'
 
 tasks:
-
   default:
     cmds:
       - task --list
 
   run:
-    desc: Run the development server
+    aliases: [r]
+    desc: Run the Tauri app in development
     cmds:
-      - task: dev
+      - task: tauri:dev
+
+  web:install:
+    aliases: [i]
+    desc: Install frontend dependencies
+    cmds:
+      - npm install
 
   dev:
-    desc: Run the development server
+    desc: Run the frontend dev server
     cmds:
       - npm run dev
 
-  build:
-    desc: Build the project
+  tauri:dev:
+    desc: Run the Tauri app with the frontend dev server
     cmds:
-      - bun run build:win
+      - npm run tauri:dev
 
-  test:
-    desc: Run tests
+  tauri:build:
+    desc: Build complete standalone Tauri app
     cmds:
-      - npm test
+      - npm run tauri:build
+
+  web:build:
+    desc: Build the frontend bundle
+    cmds:
+      - npm run build
 
   clean:
-    desc: Clean build artifacts
+    desc: Clean frontend and Tauri build artifacts
     cmds:
-      - rm -rf dist out build
+      - sh -c 'rm -rf dist src-tauri/target'

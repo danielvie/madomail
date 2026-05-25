@@ -52,8 +52,8 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  import('./gmail').then(({ setupGmailIPC }) => {
-    setupGmailIPC()
+  import('./outlook').then(({ setupMailIPC }) => {
+    setupMailIPC()
   })
 
   createWindow()
