@@ -1,48 +1,71 @@
 # Mado Mail
 
-A desktop Outlook mail client built with Tauri, Rust, Svelte 5, and TypeScript.
+A desktop Gmail client built with Electron, Svelte 5, and TypeScript. Mado Mail provides a interface for managing your emails with a focus on speed.
 
 ## Features
-- Outlook integration through a Rust COM helper.
-- Bulk move selected emails to folders in the default Outlook store.
-- Recent folder targets persisted on disk.
-- Sender-to-folder marked rules persisted on disk.
-- Windows-first desktop workflow.
+- **Gmail Integration**: Direct integration with Gmail APIs.
+- **Modern UI**: Built with Svelte 5 and Tailwind CSS 4.
+- **Cross-Platform**: Desktop support for Windows, macOS, and Linux.
+- **Advanced Interactions**: Includes pragmatic drag-and-drop for email organization.
 
-## Requirements
-- Windows
-- Outlook desktop installed and configured
-- Rust
-- Node.js and npm
-- Tauri prerequisites for Windows
+## Tech Stack
+- **Framework**: [Electron](https://www.electronjs.org/)
+- **Frontend**: [Svelte 5](https://svelte.dev/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Build Tool**: [electron-vite](https://electron-vite.org/)
+- **APIs**: [Google APIs (Gmail)](https://github.com/googleapis/google-api-nodejs-client)
 
-## Tech stack
-- `Tauri 2`
-- `Rust`
-- `Svelte 5`
-- `TypeScript`
-- `Vite`
+## Documentation
 
-## Persistence
-- `recent-folders.json`: `$env:USERPROFILE/.mado/madomail/recent-folders.json`
-- `marked-items.json`: `$env:USERPROFILE/.mado/madomail/marked-items.json`
+- [Project overview](docs/project-overview.md) — current user workflows, domain model, architecture, and limitations.
+- [Domain context](CONTEXT.md) — canonical terminology for Inbox triage, marks, and sender rules.
 
-## Development
-```/dev/null/task-run#L1-2
-task run
+## Getting Started
+
+### Prerequisites
+- Node.js (Latest LTS recommended)
+- npm
+- **Google API Credentials**: This application requires `client_secret.json` and `token.json` to be present in `$HOME/.mado/mado_mail`. 
+
+#### How to setup credentials:
+1. Go to the [Google Cloud Console Credentials page](https://console.cloud.google.com/apis/credentials).
+2. Create or select a project.
+3. Click **Create Credentials** -> **OAuth client ID**.
+4. Select **Desktop app** as the application type.
+5. Download the JSON file and rename it to `client_secret.json`.
+6. Place `client_secret.json` in `$HOME/.mado/mado_mail`.
+7. Run the authentication utility (e.g., the associated Go application) to generate the `token.json`.
+
+### Installation
+```bash
+npm install
 ```
 
-## Build helper
-```/dev/null/task-helper#L1-2
-task build:helper-com
+### Development
+To run the application in development mode with Hot Module Replacement (HMR):
+```bash
+npm run dev
 ```
 
-## Test backend
-```/dev/null/task-test#L1-2
-task test
+### Build
+To build the application for your specific platform:
+
+```bash
+# Windows
+npm run build:win
+
+# macOS
+npm run build:mac
+
+# Linux
+npm run build:linux
 ```
 
-## Notes
-- Folder paths are relative to the Outlook default store root.
-- Refresh reloads inbox and folders.
-- Mail features are Windows-only.
+The build artifacts will be located in the `dist` directory.
+
+## Recommended IDE Setup
+- [VSCode](https://code.visualstudio.com/)
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
+- [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+- [Svelte for VS Code](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode)

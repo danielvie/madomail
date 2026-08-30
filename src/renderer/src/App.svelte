@@ -1,701 +1,367 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { invoke } from '@tauri-apps/api/core'
-  import { Agentation } from 'agentation-svelte'
-  import { draggable } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
-  import ErrorPanel from './components/ErrorPanel.svelte'
-  import HeaderControls from './components/HeaderControls.svelte'
-  import MailTable from './components/MailTable.svelte'
-  import MarkedItemEditor from './components/MarkedItemEditor.svelte'
-  import MarkedItemsView from './components/MarkedItemsView.svelte'
-  import type { EmailMsg, FolderOption, MarkedItem, MoveResult, SortKey, ViewMode } from './types'
+  import { onMount } from 'svelte';
+  import ErrorPanel from './components/ErrorPanel.svelte';
+  import MarkedItemEditor from './components/MarkedItemEditor.svelte';
+  import MarkedItemsView from './components/MarkedItemsView.svelte';
+  import StagingBins from './components/StagingBins.svelte';
+  import ThemePicker, { DEFAULT_THEME, loadTheme } from './components/ThemePicker.svelte';
+  import TriageRows from './components/TriageRows.svelte';
+  import { senderAddr } from './lib/sender';
+  import type { EmailMsg, MarkAction, MarkedItem, ViewMode } from './types';
 
-  let emails = $state<EmailMsg[]>([])
-  let folders = $state<FolderOption[]>([])
-  let recentFolders = $state<string[]>([])
-  let loading = $state(false)
-  let inboxLoading = $state(false)
-  let error = $state<string | null>(null)
+  let emails = $state<EmailMsg[]>([]);
+  let loading = $state(false);
+  let error = $state<string | null>(null);
 
-  let searchQuery = $state('')
-  let folderFilter = $state('')
-  let sortKey = $state<SortKey>('date')
-  let sortDesc = $state(true)
+  let searchQuery = $state('');
+  let selectedIds = $state<Set<string>>(new Set());
+  let markedActions = $state<Record<string, MarkAction>>({});
+  let markedItems = $state<MarkedItem[]>([]);
+  let viewMode = $state<ViewMode>('emails');
 
-  let selectedFolderPath = $state('')
-  let selectedIds = $state<Set<string>>(new Set())
-  let lastSelectedId = $state<string | null>(null)
-  let assignedFolders = $state<Record<string, string>>({})
-  let markedItems = $state<MarkedItem[]>([])
-  let viewMode = $state<ViewMode>('emails')
-  let queryActive = $state(false)
+  let actionInProgress = $state(false);
+  let autoApply = $state(false);
+  let theme = $state<string>(DEFAULT_THEME);
 
-  let actionInProgress = $state(false)
-
-  let colWidths = $state([220, 400, 150])
-  let startWidth = 0
-
-  let hoveredEmail = $state<EmailMsg | null>(null)
-  let peekExpanded = $state(false)
-  let editingOpen = $state(false)
-  let editingItem = $state<MarkedItem | null>(null)
-  let editingFrom = $state('')
-  let editingFolderFilter = $state('')
-  let editingFolderPath = $state('')
+  let editingOpen = $state(false);
+  let editingItem = $state<MarkedItem | null>(null);
+  let editingFrom = $state('');
+  let editingAction = $state<MarkAction>('archive');
+  let authCode = $state('');
 
   onMount(() => {
-    loadSettings()
-    refreshAll()
-    loadMarkedItemsFromDisk()
-  })
+    theme = loadTheme();
+    loadSettings();
+    fetchEmails();
+  });
 
   $effect(() => {
-    localStorage.setItem('colWidths', JSON.stringify(colWidths))
-  })
+    localStorage.setItem('autoApply', autoApply.toString());
+  });
 
   $effect(() => {
-    localStorage.setItem('sortInfo', JSON.stringify({ key: sortKey, desc: sortDesc }))
-  })
+    localStorage.setItem('markedItems', JSON.stringify(markedItems));
+  });
 
-  const filteredFolders = $derived(filterFolders(folders, folderFilter))
-  const editorFilteredFolders = $derived(filterFolders(folders, editingFolderFilter))
-  const filteredEmails = $derived(
-    filterEmails(
-      queryActive ? emails.filter((email) => assignedFolders[email.id]) : emails,
-      searchQuery
-    )
-  )
-  const sortedEmails = $derived(sortEmails(filteredEmails, sortKey, sortDesc))
-  const sortedMarkedItems = $derived(sortMarkedItems(markedItems))
-  const assignedCount = $derived(Object.keys(assignedFolders).length)
-  const markedItemCount = $derived(markedItems.length)
-  const invalidFolderPaths = $derived(
-    new Set(
-      markedItems
-        .filter(
-          (item) =>
-            !folders.some((folder) => folder.path.toLowerCase() === item.folderPath.toLowerCase())
-        )
-        .map((item) => item.folderPath.toLowerCase())
-    )
-  )
-  const editingFolderValid = $derived(
-    !editingFolderPath ||
-      folders.some((folder) => folder.path.toLowerCase() === editingFolderPath.toLowerCase())
-  )
-  const gridStyle = $derived(
-    `grid-template-columns: ${colWidths[0]}px 4px minmax(50px, 1fr) 4px ${colWidths[2]}px;`
-  )
+  /** Everything still awaiting a decision, after the search box. */
+  const undecided = $derived(
+    emails.filter((email) => {
+      if (markedActions[email.id]) return false;
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        email.from.toLowerCase().includes(q) ||
+        email.subject.toLowerCase().includes(q) ||
+        email.snippet.toLowerCase().includes(q)
+      );
+    })
+  );
+
+  const markedCount = $derived(Object.keys(markedActions).length);
+  const senderCount = $derived(new Set(undecided.map((email) => senderAddr(email.from))).size);
 
   function loadSettings() {
-    colWidths = readJsonSetting('colWidths', colWidths)
-    const savedSort = readJsonSetting<{ key: SortKey; desc: boolean } | null>('sortInfo', null)
-    if (savedSort) {
-      sortKey = savedSort.key
-      sortDesc = savedSort.desc
-    }
-  }
-
-  function readJsonSetting<T>(key: string, fallback: T): T {
-    const saved = localStorage.getItem(key)
-    if (!saved) return fallback
-    try {
-      return JSON.parse(saved)
-    } catch (e) {
-      console.error(`Failed to parse ${key}`, e)
-      return fallback
-    }
-  }
-
-  async function loadMarkedItemsFromDisk() {
-    try {
-      const result = await invoke<{ success: boolean; data: MarkedItem[]; error?: string }>(
-        'mail_get_marked_items'
-      )
-      if (!result.success) {
-        error = result.error
-        return
+    autoApply = localStorage.getItem('autoApply') === 'true';
+    const saved = localStorage.getItem('markedItems');
+    if (saved) {
+      try {
+        markedItems = JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse markedItems', e);
       }
-      markedItems = result.data
-    } catch (err: any) {
-      error = err.message
     }
   }
 
-  async function persistMarkedItems(nextItems: MarkedItem[]) {
-    try {
-      const result = await invoke<{ success: boolean; data: MarkedItem[]; error?: string }>(
-        'mail_save_marked_items',
-        { items: nextItems }
-      )
-      if (!result.success) {
-        error = result.error
-        return false
-      }
-      markedItems = result.data
-      return true
-    } catch (err: any) {
-      error = err.message
-      return false
-    }
-  }
-
-  function filterEmails(sourceEmails: EmailMsg[], query: string) {
-    const normalizedQuery = query.toLowerCase()
-    return sourceEmails.filter(
-      (email) =>
-        email.from.toLowerCase().includes(normalizedQuery) ||
-        email.subject.toLowerCase().includes(normalizedQuery) ||
-        email.snippet.toLowerCase().includes(normalizedQuery)
-    )
-  }
-
-  function filterFolders(sourceFolders: FolderOption[], query: string) {
-    const normalizedQuery = query.toLowerCase()
-    if (!normalizedQuery) return sourceFolders
-    return sourceFolders.filter((folder) => folder.path.toLowerCase().includes(normalizedQuery))
-  }
-
-  function sortEmails(sourceEmails: EmailMsg[], key: SortKey, desc: boolean) {
-    return [...sourceEmails].sort((a, b) => {
-      if (key === 'date') {
-        const dateA = new Date(a.date).getTime() || 0
-        const dateB = new Date(b.date).getTime() || 0
-        return desc ? dateB - dateA : dateA - dateB
-      }
-
-      const valA = a[key].toLowerCase()
-      const valB = b[key].toLowerCase()
-      if (valA < valB) return desc ? 1 : -1
-      if (valA > valB) return desc ? -1 : 1
-      return 0
-    })
-  }
-
-  function sortMarkedItems(sourceItems: MarkedItem[]) {
-    return [...sourceItems].sort((a, b) =>
-      a.from.localeCompare(b.from, undefined, { sensitivity: 'base' })
-    )
-  }
-
-  function fitColumns() {
-    const dateTexts = sortedEmails.map(formatEmailDate)
-    const dateWidth = fitTextColumnPx(
-      ['DATE', ...dateTexts],
-      '11px "JetBrains Mono", monospace',
-      96,
-      180
-    )
-    const fromWidth = fitTextColumnPx(
-      ['FROM', ...sortedEmails.map((email) => email.from)],
-      '14px "Bricolage Grotesque", sans-serif',
-      120,
-      420
-    )
-    colWidths[2] = dateWidth
-    colWidths[0] = fromWidth + 34
-  }
-
-  function fitTextColumnPx(texts: string[], font: string, minPx: number, maxPx: number) {
-    const canvas = document.createElement('canvas')
-    const context = canvas.getContext('2d')
-    if (!context) return minPx
-
-    context.font = font
-    const widestTextPx = texts.reduce(
-      (width, text) => Math.max(width, context.measureText(text).width),
-      0
-    )
-    return Math.min(maxPx, Math.max(minPx, Math.ceil(widestTextPx) + 28))
-  }
-
-  function formatEmailDate(email: EmailMsg) {
-    return new Date(email.date).toLocaleDateString(undefined, {
+  function formatEmailDate(date: string) {
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return date;
+    return parsed.toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    })
+    });
   }
 
-  async function refreshAll(forceFolderRefresh = false) {
-    loading = true
-    inboxLoading = true
-    error = null
-
-    const emailPromise = invoke<{ success: boolean; data: EmailMsg[]; error?: string }>(
-      'mail_fetch_inbox'
-    )
-
-    const folderPromise = invoke<{ success: boolean; data: FolderOption[]; error?: string }>(
-      'mail_list_folders',
-      { forceRefresh: forceFolderRefresh }
-    )
-
-    const recentPromise = invoke<{ success: boolean; data: string[]; error?: string }>(
-      'mail_get_recent_folders'
-    )
-
+  async function fetchEmails() {
+    loading = true;
+    error = null;
     try {
-      const emailRes = await emailPromise
-      if (!emailRes.success) {
-        error = emailRes.error
+      // @ts-ignore
+      const res = await window.electron.ipcRenderer.invoke('gmail-fetch-inbox');
+      if (res.success) {
+        emails = res.data;
+        selectedIds = new Set();
+        markedActions = {};
       } else {
-        emails = emailRes.data
-        selectedIds = new Set()
-        lastSelectedId = null
-        assignedFolders = {}
-        queryActive = false
+        error = res.error;
       }
     } catch (err: any) {
-      error = err.message
+      error = err.message;
     } finally {
-      inboxLoading = false
+      loading = false;
     }
-
-    try {
-      const folderRes = await folderPromise
-      if (!folderRes.success) {
-        if (!error) error = folderRes.error
-      } else {
-        folders = folderRes.data
-      }
-    } catch (err: any) {
-      if (!error) error = err.message
-    }
-
-    try {
-      const recentRes = await recentPromise
-      if (!recentRes.success) {
-        if (!error) error = recentRes.error
-      } else {
-        recentFolders = recentRes.data
-      }
-    } catch (err: any) {
-      if (!error) error = err.message
-    }
-
-    const livePaths = new Set(folders.map((folder) => folder.path.toLowerCase()))
-    if (!selectedFolderPath || !livePaths.has(selectedFolderPath.toLowerCase())) {
-      selectedFolderPath = recentFolders.find((path) => livePaths.has(path.toLowerCase())) ?? ''
-    }
-
-    loading = false
-  }
-
-  function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      sortDesc = !sortDesc
-    } else {
-      sortKey = key
-      sortDesc = true
-    }
-  }
-
-  function handleRowClick(event: MouseEvent | KeyboardEvent, email: EmailMsg) {
-    if (event.altKey) {
-      event.preventDefault()
-      openMarkedItemEditor(email)
-      return
-    }
-
-    const newSelected = new Set(selectedIds)
-    if (newSelected.has(email.id)) {
-      newSelected.delete(email.id)
-    } else {
-      newSelected.add(email.id)
-    }
-    selectedIds = newSelected
-    lastSelectedId = email.id
-  }
-
-  function handleRowRightClick(event: MouseEvent, id: string) {
-    event.preventDefault()
-    if (!lastSelectedId) {
-      selectedIds = new Set([id])
-      lastSelectedId = id
-      return
-    }
-
-    const currentIdx = sortedEmails.findIndex((email) => email.id === id)
-    const lastIdx = sortedEmails.findIndex((email) => email.id === lastSelectedId)
-    if (currentIdx === -1 || lastIdx === -1) return
-
-    const start = Math.min(currentIdx, lastIdx)
-    const end = Math.max(currentIdx, lastIdx)
-    const newSelected = new Set(selectedIds)
-    for (let i = start; i <= end; i++) {
-      newSelected.add(sortedEmails[i].id)
-    }
-    selectedIds = newSelected
-    lastSelectedId = id
-  }
-
-  function handleRowMouseDown(event: MouseEvent, id: string) {
-    if (event.button !== 1) return
-
-    event.preventDefault()
-    if (selectedIds.has(id)) {
-      selectedIds = new Set()
-      return
-    }
-
-    const newSelected = new Set(selectedIds)
-    for (const email of sortedEmails) {
-      newSelected.add(email.id)
-    }
-    selectedIds = newSelected
-  }
-
-  function handleMouseMove(e: MouseEvent, email: EmailMsg) {
-    if (e.ctrlKey) {
-      if (hoveredEmail?.id !== email.id) peekExpanded = false
-      hoveredEmail = email
-    } else {
-      hoveredEmail = null
-    }
-  }
-
-  function normalizePath(path: string) {
-    return path.replace(/\\/g, '/').trim()
   }
 
   function findMarkedItem(email: EmailMsg) {
-    const sender = email.senderMatch.toLowerCase()
-    const matches = markedItems.filter(
-      (item) => item.from.trim() && sender.includes(item.from.trim().toLowerCase())
-    )
-    if (matches.length === 0) return null
-    return matches.sort((a, b) => b.from.trim().length - a.from.trim().length)[0]
+    const from = email.from.toLowerCase();
+    return markedItems.find((item) => item.from.trim() && from.includes(item.from.trim().toLowerCase()));
   }
 
+  async function mark(ids: string[], action: MarkAction) {
+    if (ids.length === 0) return;
+    if (autoApply) {
+      await applyActionToIds(action, ids);
+      selectedIds = new Set();
+      return;
+    }
+    const next = { ...markedActions };
+    for (const id of ids) next[id] = action;
+    markedActions = next;
+    selectedIds = new Set();
+  }
+
+  function unmark(ids: string[]) {
+    const next = { ...markedActions };
+    for (const id of ids) delete next[id];
+    markedActions = next;
+  }
+
+  /** Save a sender rule and stage everything it already matches. */
+  async function always(from: string, action: MarkAction) {
+    const key = senderAddr(from);
+    const existing = markedItems.find((item) => item.from === key);
+    if (existing) {
+      markedItems = markedItems.map((item) =>
+        item.id === existing.id ? { ...item, action } : item
+      );
+    } else {
+      markedItems = [{ id: crypto.randomUUID(), from: key, action }, ...markedItems];
+    }
+    await mark(
+      emails.filter((e) => senderAddr(e.from) === key && !markedActions[e.id]).map((e) => e.id),
+      action
+    );
+  }
+
+  async function executeActions() {
+    const archiveIds = Object.entries(markedActions)
+      .filter(([, action]) => action === 'archive')
+      .map(([id]) => id);
+    const trashIds = Object.entries(markedActions)
+      .filter(([, action]) => action === 'trash')
+      .map(([id]) => id);
+    if (archiveIds.length === 0 && trashIds.length === 0) return;
+
+    actionInProgress = true;
+    try {
+      if (archiveIds.length > 0) await window.electron.ipcRenderer.invoke('gmail-archive', archiveIds);
+      if (trashIds.length > 0) await window.electron.ipcRenderer.invoke('gmail-trash', trashIds);
+      const processedIds = new Set([...archiveIds, ...trashIds]);
+      emails = emails.filter((email) => !processedIds.has(email.id));
+      markedActions = {};
+    } catch (err: any) {
+      error = err.message;
+    } finally {
+      actionInProgress = false;
+    }
+  }
+
+  async function applyActionToIds(action: MarkAction, ids: string[]) {
+    actionInProgress = true;
+    try {
+      if (action === 'archive') await window.electron.ipcRenderer.invoke('gmail-archive', ids);
+      if (action === 'trash') await window.electron.ipcRenderer.invoke('gmail-trash', ids);
+      const processedIds = new Set(ids);
+      emails = emails.filter((email) => !processedIds.has(email.id));
+    } catch (err: any) {
+      error = err.message;
+    } finally {
+      actionInProgress = false;
+    }
+  }
+
+  /** Refresh the Inbox, then stage every message the saved sender rules match. */
   async function runMarkedItemsQuery() {
-    if (markedItems.length === 0) return
-    loading = true
-    error = null
+    if (markedItems.length === 0) return;
+    loading = true;
+    error = null;
     try {
-      const res = await invoke<{ success: boolean; data: EmailMsg[]; error?: string }>(
-        'mail_fetch_inbox'
-      )
+      // @ts-ignore
+      const res = await window.electron.ipcRenderer.invoke('gmail-fetch-inbox');
       if (!res.success) {
-        error = res.error
-        return
+        error = res.error;
+        return;
       }
 
-      const nextEmails = res.data as EmailMsg[]
-      const nextAssignments: Record<string, string> = {}
+      const nextEmails = res.data as EmailMsg[];
+      const nextMarks: Record<string, MarkAction> = {};
       for (const email of nextEmails) {
-        const item = findMarkedItem(email)
-        if (item) nextAssignments[email.id] = item.folderPath
+        const item = findMarkedItem(email);
+        if (item) nextMarks[email.id] = item.action;
       }
 
-      emails = nextEmails
-      assignedFolders = nextAssignments
-      selectedIds = new Set()
-      lastSelectedId = null
-      queryActive = true
-      viewMode = 'emails'
+      emails = nextEmails;
+      markedActions = nextMarks;
+      selectedIds = new Set();
+      viewMode = 'emails';
     } catch (err: any) {
-      error = err.message
+      error = err.message;
     } finally {
-      loading = false
+      loading = false;
     }
-  }
-
-  async function moveToFolder(ids: string[], folderPath: string) {
-    if (ids.length === 0 || !folderPath) return true
-
-    actionInProgress = true
-    error = null
-    try {
-      const res = await invoke<{ success: boolean; data: MoveResult[]; error?: string }>(
-        'mail_move',
-        { ids, folderPath }
-      )
-      if (!res.success) {
-        error = res.error
-        return false
-      }
-
-      const results = res.data as MoveResult[]
-      const failures = results.filter((result) => !result.success)
-      if (failures.length > 0) {
-        const successCount = results.length - failures.length
-        error = `Moved ${successCount}/${results.length} emails. ${failures[0].error ?? 'Some moves failed.'}`
-      }
-      return true
-    } catch (err: any) {
-      error = err.message
-      return false
-    } finally {
-      actionInProgress = false
-    }
-  }
-
-  async function moveSelectedToCurrentFolder() {
-    const ids = Array.from(selectedIds)
-    const moved = await moveToFolder(ids, selectedFolderPath)
-    if (!moved) return
-
-    selectedIds = new Set()
-    await refreshAll()
-  }
-
-  async function handleRecentFolderClick(folderPath: string) {
-    if (selectedIds.size > 0) {
-      const moved = await moveToFolder(Array.from(selectedIds), folderPath)
-      if (!moved) return
-      selectedFolderPath = folderPath
-      selectedIds = new Set()
-      await refreshAll()
-      return
-    }
-
-    selectedFolderPath = folderPath
-  }
-
-  function clearAssignments() {
-    assignedFolders = {}
-    queryActive = false
-  }
-
-  async function applyRuleMoves() {
-    const groups = new Map<string, string[]>()
-    for (const [id, folderPath] of Object.entries(assignedFolders)) {
-      const nextIds = groups.get(folderPath) ?? []
-      nextIds.push(id)
-      groups.set(folderPath, nextIds)
-    }
-
-    if (groups.size === 0) return
-
-    for (const [folderPath, ids] of groups) {
-      const moved = await moveToFolder(ids, folderPath)
-      if (!moved) break
-    }
-
-    await refreshAll()
-  }
-
-  function openMarkedItemEditor(email: EmailMsg) {
-    const existing = findMarkedItem(email)
-    editingOpen = true
-    editingItem = existing ? { ...existing } : null
-    editingFrom = existing?.from ?? email.from
-    editingFolderPath = existing?.folderPath ?? selectedFolderPath
-    editingFolderFilter = ''
   }
 
   function editMarkedItem(item: MarkedItem) {
-    editingOpen = true
-    editingItem = { ...item }
-    editingFrom = item.from
-    editingFolderPath = item.folderPath
-    editingFolderFilter = ''
+    editingOpen = true;
+    editingItem = { ...item };
+    editingFrom = item.from;
+    editingAction = item.action;
   }
 
-  async function saveMarkedItem() {
-    const from = editingFrom.trim()
-    const folderPath = normalizePath(editingFolderPath)
-    if (!from || !folderPath) return
-
-    const nextItems = editingItem
-      ? markedItems.map((item) =>
-          item.id === editingItem?.id ? { ...item, from, folderPath } : item
-        )
-      : [{ id: crypto.randomUUID(), from, folderPath }, ...markedItems]
-
-    const saved = await persistMarkedItems(nextItems)
-    if (saved) closeMarkedItemEditor()
+  function saveMarkedItem() {
+    const from = editingFrom.trim();
+    if (!from) return;
+    if (editingItem) {
+      markedItems = markedItems.map((item) =>
+        item.id === editingItem?.id ? { ...item, from, action: editingAction } : item
+      );
+    } else {
+      markedItems = [{ id: crypto.randomUUID(), from, action: editingAction }, ...markedItems];
+    }
+    closeMarkedItemEditor();
   }
 
-  async function deleteMarkedItem(id: string) {
-    const nextItems = markedItems.filter((item) => item.id !== id)
-    const saved = await persistMarkedItems(nextItems)
-    if (saved && editingItem?.id === id) closeMarkedItemEditor()
+  function deleteMarkedItem(id: string) {
+    markedItems = markedItems.filter((item) => item.id !== id);
+    if (editingItem?.id === id) closeMarkedItemEditor();
   }
 
   function closeMarkedItemEditor() {
-    editingOpen = false
-    editingItem = null
-    editingFrom = ''
-    editingFolderFilter = ''
-    editingFolderPath = ''
+    editingOpen = false;
+    editingItem = null;
+    editingFrom = '';
+    editingAction = 'archive';
   }
 
-  function resizable(node: HTMLElement, index: number) {
-    return draggable({
-      element: node,
-      onDragStart: () => {
-        startWidth = index === 0 ? colWidths[0] : colWidths[2]
-      },
-      onDrag: ({ location }) => {
-        const deltaX = location.current.input.clientX - location.initial.input.clientX
-
-        if (index === 0) {
-          colWidths[0] = Math.max(50, startWidth + deltaX)
-        } else {
-          colWidths[2] = Math.max(80, startWidth - deltaX)
-        }
-      },
-      onGenerateDragPreview: ({ nativeSetDragImage }) => {
-        nativeSetDragImage(new Image(), 0, 0)
+  async function handleAuthorize() {
+    if (!authCode) return;
+    actionInProgress = true;
+    try {
+      // @ts-ignore
+      const res = await window.electron.ipcRenderer.invoke('gmail-submit-code', authCode);
+      if (res.success) {
+        authCode = '';
+        fetchEmails();
+      } else {
+        error = res.error;
       }
-    })
+    } catch (err: any) {
+      error = err.message;
+    } finally {
+      actionInProgress = false;
+    }
   }
 </script>
 
-<main class="h-screen w-screen flex flex-col p-4 bg-base text-accent">
-  <HeaderControls
-    {searchQuery}
-    {folderFilter}
-    {selectedFolderPath}
-    {filteredFolders}
-    {recentFolders}
-    {viewMode}
-    emailCount={emails.length}
-    selectedCount={selectedIds.size}
-    {assignedCount}
-    {markedItemCount}
-    {actionInProgress}
-    {loading}
-    onSearchChange={(value) => (searchQuery = value)}
-    onFolderFilterChange={(value) => (folderFilter = value)}
-    onFolderPathChange={(value) => (selectedFolderPath = normalizePath(value))}
-    onRecentFolderClick={handleRecentFolderClick}
-    onToggleView={() => (viewMode = viewMode === 'emails' ? 'marked' : 'emails')}
-    onRunQuery={runMarkedItemsQuery}
-    onMoveSelected={moveSelectedToCurrentFolder}
-    onClearAssignments={clearAssignments}
-    onApplyRules={applyRuleMoves}
-    onRefresh={() => refreshAll(true)}
-  />
+<main class="flex h-screen flex-col overflow-hidden bg-canvas text-ink">
+  <header class="flex items-center gap-2 border-b border-line px-3 py-2">
+    <input
+      class="w-52 rounded-md border border-line bg-panel px-3 py-1.5 text-sm outline-none placeholder:text-ink-dim"
+      placeholder="Filter..."
+      bind:value={searchQuery}
+    />
+    <button
+      class="rounded-md border border-line px-2.5 py-1.5 font-mono text-[10px] hover:bg-panel2 disabled:opacity-30"
+      disabled={markedItems.length === 0 || loading}
+      onclick={runMarkedItemsQuery}>RUN QUERY</button
+    >
+    <button
+      class="rounded-md border border-line px-2.5 py-1.5 font-mono text-[10px] hover:bg-panel2"
+      onclick={() => (viewMode = viewMode === 'emails' ? 'marked' : 'emails')}
+      >{viewMode === 'emails' ? 'RULES' : 'INBOX'}</button
+    >
+    <button
+      class="rounded-md border border-line px-2.5 py-1.5 font-mono text-[10px] hover:bg-panel2 disabled:opacity-30"
+      disabled={loading}
+      onclick={fetchEmails}>{loading ? '…' : 'REFRESH'}</button
+    >
+
+    <span class="font-mono text-[11px] text-ink-dim">
+      {senderCount} senders · {undecided.length} undecided
+    </span>
+
+    {#if selectedIds.size}
+      <span class="flex items-center gap-2">
+        <span class="font-mono text-[11px] text-brand">{selectedIds.size} selected</span>
+        <button
+          class="rounded bg-panel2 px-2 py-1 font-mono text-[10px] hover:bg-brand hover:text-on-brand"
+          onclick={() => mark([...selectedIds], 'archive')}>ARCHIVE</button
+        >
+        <button
+          class="rounded bg-panel2 px-2 py-1 font-mono text-[10px] hover:bg-danger hover:text-on-danger"
+          onclick={() => mark([...selectedIds], 'trash')}>DELETE</button
+        >
+        <button
+          class="font-mono text-[10px] text-ink-dim hover:text-ink"
+          onclick={() => (selectedIds = new Set())}>clear</button
+        >
+      </span>
+    {/if}
+
+    <label class="ml-auto flex items-center gap-2 font-mono text-[10px] text-ink-dim">
+      <input type="checkbox" bind:checked={autoApply} /> auto-apply
+    </label>
+    <ThemePicker bind:current={theme} />
+  </header>
 
   {#if error}
-    <ErrorPanel {error} />
+    <ErrorPanel
+      {error}
+      {authCode}
+      {actionInProgress}
+      onAuthCodeChange={(value) => (authCode = value)}
+      onAuthorize={handleAuthorize}
+    />
   {/if}
 
-  {#if queryActive && viewMode === 'emails'}
-    <div
-      class="mb-3 flex items-center justify-between shrink-0 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 font-mono text-[10px] uppercase text-brand"
-    >
-      <span>QUERY_RESULT: {assignedCount} matched inbox emails</span>
-      <button onclick={() => (queryActive = false)} class="text-accent-dim hover:text-accent"
-        >SHOW_ALL</button
-      >
-    </div>
-  {/if}
-
-  <div
-    class="flex-1 overflow-hidden border border-surface-active rounded-xl bg-surface flex flex-col shadow-xl"
-  >
-    {#if viewMode === 'emails'}
-      <MailTable
-        emails={sortedEmails}
-        loading={inboxLoading}
-        {selectedIds}
-        {assignedFolders}
-        {sortKey}
-        {sortDesc}
-        {gridStyle}
-        {resizable}
-        onFitColumns={fitColumns}
-        onSort={handleSort}
-        onRowClick={handleRowClick}
-        onRowRightClick={handleRowRightClick}
-        onRowMouseDown={handleRowMouseDown}
-        onRowMouseMove={handleMouseMove}
-        onRowMouseLeave={() => (hoveredEmail = null)}
+  {#if viewMode === 'marked'}
+    <MarkedItemsView
+      {markedItems}
+      onEdit={editMarkedItem}
+      onDelete={deleteMarkedItem}
+    />
+  {:else}
+    <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_300px] divide-x divide-line">
+      <TriageRows
+        emails={undecided}
+        selection={selectedIds}
+        rules={markedItems}
+        onselect={(next) => (selectedIds = next)}
+        onmark={mark}
+        onalways={always}
+        formatDate={formatEmailDate}
       />
-    {:else}
-      <MarkedItemsView
-        markedItems={sortedMarkedItems}
-        {invalidFolderPaths}
-        onEdit={editMarkedItem}
-        onDelete={deleteMarkedItem}
+      <StagingBins
+        {emails}
+        marks={markedActions}
+        rules={markedItems}
+        busy={actionInProgress}
+        onunmark={unmark}
+        onunmarkall={() => (markedActions = {})}
+        onapply={executeActions}
       />
-    {/if}
-  </div>
-
-  {#if hoveredEmail}
-    <div
-      role="button"
-      tabindex="0"
-      aria-label={peekExpanded ? 'Collapse email peek' : 'Expand email peek'}
-      onclick={() => (peekExpanded = !peekExpanded)}
-      onkeydown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          peekExpanded = !peekExpanded
-        }
-      }}
-      class="fixed bottom-4 right-4 z-50 w-[min(520px,calc(100vw-32px))] {peekExpanded
-        ? 'max-h-[calc(100vh-96px)]'
-        : ''} rounded-lg border border-brand/50 bg-surface-active p-4 text-left shadow-2xl transition-all hover:border-brand/70"
-    >
-      <div class="mb-3 flex items-start justify-between gap-4">
-        <div class="min-w-0">
-          <div class="font-mono text-[10px] uppercase tracking-wider text-brand">Email Peek</div>
-          <div class="truncate text-sm font-semibold text-accent">{hoveredEmail.from}</div>
-        </div>
-        <div class="flex shrink-0 items-start gap-2">
-          <div
-            class="whitespace-nowrap pt-1 text-right font-mono text-[10px] uppercase text-accent-dim"
-          >
-            {formatEmailDate(hoveredEmail)}
-          </div>
-          <button
-            type="button"
-            aria-label={peekExpanded ? 'Collapse email peek' : 'Expand email peek'}
-            onclick={(event) => {
-              event.stopPropagation()
-              peekExpanded = !peekExpanded
-            }}
-            class="rounded border border-brand/30 bg-brand/10 px-2 py-1 font-mono text-[10px] uppercase text-brand transition-colors hover:border-brand/60 hover:bg-brand/20"
-          >
-            {peekExpanded ? 'Collapse' : 'Expand'}
-          </button>
-          <button
-            type="button"
-            aria-label="Close email peek"
-            onclick={(event) => {
-              event.stopPropagation()
-              hoveredEmail = null
-              peekExpanded = false
-            }}
-            class="rounded border border-accent/20 bg-surface-hover px-2 py-1 font-mono text-[10px] uppercase text-accent-dim transition-colors hover:border-brand/40 hover:text-brand"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-      <div class="mb-2 {peekExpanded ? '' : 'line-clamp-2'} text-sm font-medium text-accent/90">
-        {hoveredEmail.subject || '(No Subject)'}
-      </div>
-      <div
-        class="{peekExpanded
-          ? 'max-h-[calc(100vh-240px)] overflow-y-auto whitespace-pre-wrap pr-2'
-          : 'max-h-32 overflow-hidden'} text-xs leading-relaxed text-accent/75"
-      >
-        {peekExpanded ? hoveredEmail.body || hoveredEmail.snippet : hoveredEmail.snippet}
-      </div>
     </div>
   {/if}
 
   {#if editingOpen}
     <MarkedItemEditor
       from={editingFrom}
-      folderFilter={editingFolderFilter}
-      folderPath={editingFolderPath}
-      filteredFolders={editorFilteredFolders}
-      folderValid={editingFolderValid}
+      action={editingAction}
       onFromChange={(value) => (editingFrom = value)}
-      onFolderFilterChange={(value) => (editingFolderFilter = value)}
-      onFolderPathChange={(value) => (editingFolderPath = normalizePath(value))}
+      onActionChange={(value) => (editingAction = value)}
       onCancel={closeMarkedItemEditor}
       onSave={saveMarkedItem}
     />
   {/if}
-
-  <Agentation endpoint="http://localhost:4747" />
 </main>

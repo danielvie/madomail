@@ -1,29 +1,45 @@
 @import "tailwindcss";
+@import "./theme.css";
 
 @theme {
   --font-sans: 'Bricolage Grotesque', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --color-base: #0a0a0b;
-  --color-surface: #161618;
-  --color-surface-hover: #232326;
-  --color-surface-active: #323236;
-  --color-accent: #ffffff;
-  --color-accent-dim: #8b8b92;
-  --color-brand: #d6ff00;
-  --color-danger: #ff3333;
+
+  /* Semantic palette. The values live in theme.css so a [data-theme] on <html>
+     re-colours the whole app without touching a single utility class. */
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-panel2: var(--panel2);
+  --color-panel3: var(--panel3);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-brand: var(--accent);
+  --color-on-brand: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
+
+  /* Legacy names kept so the earlier prototype variants still render. Note that
+     `text-base` resolves to the canvas colour here, not a font size — that is a
+     deliberate carry-over of the original palette's idiom. */
+  --color-base: var(--canvas);
+  --color-surface: var(--panel);
+  --color-surface-hover: var(--panel2);
+  --color-surface-active: var(--panel3);
+  --color-accent: var(--ink);
+  --color-accent-dim: var(--ink-dim);
 }
 
 @layer base {
   body {
-    background-color: var(--color-base);
-    color: var(--color-accent);
+    background-color: var(--canvas);
+    color: var(--ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
     user-select: none;
   }
-  
-  /* Custom scrollbar for dark mode */
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -32,10 +48,10 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-surface-active);
+    background: var(--panel3);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-accent-dim);
+    background: var(--ink-dim);
   }
 }
