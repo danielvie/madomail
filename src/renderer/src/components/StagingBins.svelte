@@ -1,7 +1,7 @@
 <script lang="ts">
   // Staging: two named bins so Archive and Delete never mix, one dense line per sender
   // (bar length = count), a hover peek that tracks the line, and an explicit put-back
-  // control — the line itself is inert, so nothing is undone by a stray click.
+  // control. Click a line to keep its peek open while inspecting the messages.
   import type { EmailMsg, MarkAction, MarkedItem } from '../types'
   import { senderAddr, senderName } from '../lib/sender'
 
@@ -45,12 +45,40 @@
   const count = (ls: Line[]): number => ls.reduce((n, l) => n + l.msgs.length, 0)
 
   let hover = $state<string | null>(null)
+  let pinned = $state<string | null>(null)
+  let peekExpanded = $state(false)
   let hoverY = $state(0)
-  const hovered = $derived([...archive, ...trash].find((l) => l.key + ':' + marks[l.msgs[0].id] === hover))
+  const hovered = $derived.by(() => {
+    const lines = [...archive, ...trash]
+    const pinnedLine = pinned
+      ? lines.find((l) => l.key + ':' + marks[l.msgs[0].id] === pinned)
+      : undefined
+    const key = pinnedLine ? pinned : hover
+    return lines.find((l) => l.key + ':' + marks[l.msgs[0].id] === key)
+  })
 
   function peek(e: MouseEvent, key: string): void {
+    if (!pinned && hover !== key) peekExpanded = false
     hover = key
-    hoverY = (e.currentTarget as HTMLElement).getBoundingClientRect().top
+    if (!pinned) hoverY = (e.currentTarget as HTMLElement).getBoundingClientRect().top
+  }
+
+  function pinPeek(element: HTMLElement, key: string): void {
+    hover = key
+    hoverY = element.getBoundingClientRect().top
+    if (pinned === key) {
+      pinned = null
+      peekExpanded = false
+      return
+    }
+    pinned = key
+    peekExpanded = false
+  }
+
+  function closePeek(): void {
+    pinned = null
+    hover = null
+    peekExpanded = false
   }
 </script>
 
@@ -89,31 +117,46 @@
         {#each ls as l (l.key)}
           {@const k = l.key + ':' + action}
           <li
-            class="flex items-center gap-2 px-2 py-1 {hover === k ? 'bg-panel2' : ''}"
+            class="flex items-center gap-2 px-2 py-1 {pinned === k || hover === k
+              ? 'bg-panel2'
+              : ''}"
             onmouseenter={(e) => peek(e, k)}
             onmouseleave={() => (hover = null)}
           >
-            <span class="flex h-3 w-12 shrink-0 items-center gap-px">
-              {#each { length: Math.min(l.msgs.length, 9) } as _}
-                <span
-                  class="h-3 w-1 shrink-0 rounded-[1px] {dot} {hover === k
-                    ? 'opacity-100'
-                    : 'opacity-60'}"
-                ></span>
-              {/each}
-              {#if l.msgs.length > 9}
-                <span class="ml-0.5 font-mono text-[8px] {label}">+</span>
+            <button
+              type="button"
+              class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
+              aria-pressed={pinned === k}
+              onclick={(e) => pinPeek(e.currentTarget as HTMLElement, k)}
+            >
+              {#if pinned === k}
+                <span class="shrink-0 font-mono text-[10px] text-brand" role="img" aria-label="Pinned" title="Pinned">◆</span>
               {/if}
-            </span>
-            <span class="min-w-0 flex-1 truncate text-[11px]">{senderName(l.from)}</span>
-            {#if l.byRule}
-              <span class="shrink-0 font-mono text-[8px] text-ink-dim">RULE</span>
-            {/if}
-            <span class="w-5 shrink-0 text-right font-mono text-[10px]">{l.msgs.length}</span>
+              <span class="flex h-3 w-12 shrink-0 items-center gap-px">
+                {#each { length: Math.min(l.msgs.length, 9) } as _}
+                  <span
+                    class="h-3 w-1 shrink-0 rounded-[1px] {dot} {pinned === k || hover === k
+                      ? 'opacity-100'
+                      : 'opacity-60'}"
+                  ></span>
+                {/each}
+                {#if l.msgs.length > 9}
+                  <span class="ml-0.5 font-mono text-[8px] {label}">+</span>
+                {/if}
+              </span>
+              <span class="min-w-0 flex-1 truncate text-[11px]">{senderName(l.from)}</span>
+              {#if l.byRule}
+                <span class="shrink-0 font-mono text-[8px] text-ink-dim">RULE</span>
+              {/if}
+              <span class="w-5 shrink-0 text-right font-mono text-[10px]">{l.msgs.length}</span>
+            </button>
             <button
               class="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] text-ink-dim hover:bg-panel3 hover:text-ink"
               title="Put {l.msgs.length} back in the Inbox"
-              onclick={() => onunmark(l.msgs.map((m) => m.id))}>↩</button
+              onclick={() => {
+                if (pinned === k) pinned = null
+                onunmark(l.msgs.map((m) => m.id))
+              }}>↩</button
             >
           </li>
         {:else}
@@ -139,8 +182,8 @@
   {#if hovered}
     {@const a = marks[hovered.msgs[0].id]}
     <div
-      class="pointer-events-none fixed right-[310px] z-30 w-80 rounded-lg border border-line bg-panel p-3 shadow-2xl"
-      style="top:{Math.min(Math.max(hoverY - 8, 8), window.innerHeight - 220)}px"
+      class="fixed right-[310px] z-30 max-h-[calc(100vh-16px)] w-80 overflow-hidden rounded-lg border border-line bg-panel p-3 shadow-2xl"
+      style="top:{Math.min(Math.max(hoverY - 8, 8), Math.max(window.innerHeight - (peekExpanded ? 400 : 220), 8))}px"
     >
       <div class="flex items-baseline gap-2">
         <span class="min-w-0 truncate text-sm font-semibold">{senderName(hovered.from)}</span>
@@ -148,19 +191,35 @@
           >{a === 'archive' ? 'archive' : 'delete'}</span
         >
         <span class="ml-auto shrink-0 font-mono text-[10px] text-ink-dim">{hovered.msgs.length}</span>
+        <button
+          class="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[9px] text-ink-dim hover:bg-panel3 hover:text-ink"
+          aria-label="Close sender peek"
+          title="Close"
+          onclick={closePeek}>CLOSE</button
+        >
       </div>
       <div class="mt-0.5 truncate font-mono text-[10px] text-ink-dim">
         {senderAddr(hovered.from)}
       </div>
-      <ul class="mt-2 space-y-1 border-t border-line pt-2">
-        {#each hovered.msgs.slice(0, 6) as m (m.id)}
+      <ul
+        class="mt-2 max-h-64 space-y-1 border-t border-line pt-2 {peekExpanded
+          ? 'overflow-y-auto pr-1'
+          : ''}"
+      >
+        {#each (peekExpanded ? hovered.msgs : hovered.msgs.slice(0, 6)) as m (m.id)}
           <li>
             <div class="truncate text-xs">{m.subject}</div>
             <div class="truncate text-[11px] text-ink-dim">{m.snippet}</div>
           </li>
         {/each}
-        {#if hovered.msgs.length > 6}
-          <li class="font-mono text-[10px] text-ink-dim">+{hovered.msgs.length - 6} more</li>
+        {#if hovered.msgs.length > 6 && !peekExpanded}
+          <li>
+            <button
+              type="button"
+              class="font-mono text-[10px] text-ink-dim underline decoration-dotted underline-offset-2 hover:text-ink"
+              onclick={() => (peekExpanded = true)}
+            >+{hovered.msgs.length - 6} more</button>
+          </li>
         {/if}
       </ul>
     </div>
