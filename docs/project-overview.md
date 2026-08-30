@@ -48,7 +48,7 @@ A user can select messages and choose one of two actions:
 - **Archive** removes the messages from the Gmail Inbox.
 - **Delete** moves the messages to Gmail's Trash; it is not permanent deletion.
 
-Normally, these choices create temporary **marks**, which collect in the **staging area** down the right-hand side. Staging is split into two named bins — *To Archive* and *To Delete* — so the two actions never mix. Each bin lists one line per sender, carrying a bar whose length is the message count, the sender's name, a `RULE` tag when a sender rule produced it, the count, and a `↩` control that puts that group back in the Inbox. The lines themselves are inert: only the `↩` control undoes anything.
+Normally, these choices create temporary **marks**, which collect in the **staging area** down the right-hand side. Staging is split into two named bins — _To Archive_ and _To Delete_ — so the two actions never mix. Each bin lists one line per sender, carrying a bar whose length is the message count, the sender's name, a `RULE` tag when a sender rule produced it, the count, and a `↩` control that puts that group back in the Inbox. The lines themselves are inert: only the `↩` control undoes anything.
 
 **Apply** sends all pending Archive and Delete actions to Gmail, and states both totals on the button.
 
@@ -73,14 +73,14 @@ Sender rules are stored in the application's local browser storage. They are not
 
 The important distinction in Mado Mail is between temporary decisions and saved automation rules:
 
-| Concept | Meaning | Lifetime |
-| --- | --- | --- |
-| Email message | One Gmail message currently represented in the Inbox workspace | Comes from Gmail; refreshed from the account |
-| Selection | Messages currently chosen for a command | Until the selection changes or is cleared |
-| Mark | A pending Archive or Delete instruction on one message | Until unmarked, applied, or the Inbox is refreshed |
-| Sender rule | Saved sender text plus an Archive or Delete action | Persists in the app until edited or removed |
-| Rule query | Refreshes the Inbox and turns matching sender rules into marks | One operation; it does not apply actions |
-| Email peek | Non-destructive compact or expanded message preview | Until closed or replaced by another peek |
+| Concept       | Meaning                                                        | Lifetime                                           |
+| ------------- | -------------------------------------------------------------- | -------------------------------------------------- |
+| Email message | One Gmail message currently represented in the Inbox workspace | Comes from Gmail; refreshed from the account       |
+| Selection     | Messages currently chosen for a command                        | Until the selection changes or is cleared          |
+| Mark          | A pending Archive or Delete instruction on one message         | Until unmarked, applied, or the Inbox is refreshed |
+| Sender rule   | Saved sender text plus an Archive or Delete action             | Persists in the app until edited or removed        |
+| Rule query    | Refreshes the Inbox and turns matching sender rules into marks | One operation; it does not apply actions           |
+| Email peek    | Non-destructive compact or expanded message preview            | Until closed or replaced by another peek           |
 
 The interface calls sender rules “Marked Items,” while the Inbox uses “marked” for pending message actions. These are different concepts: a sender rule is durable; a message mark is a temporary triage decision.
 
@@ -97,7 +97,7 @@ The interface calls sender rules “Marked Items,” while the Inbox uses “mar
 
 ## Application architecture
 
-Mado Mail is an Electron application with a Svelte renderer and TypeScript throughout.
+Mado Mail is an Electron application with a React renderer and TypeScript throughout.
 
 ### Electron main process
 
@@ -118,16 +118,16 @@ Mado Mail is an Electron application with a Svelte renderer and TypeScript throu
 
 ### Renderer
 
-`src/renderer/src/App.svelte` is the application coordinator. It owns Inbox data, selection, pending marks, sender rules, view state, filtering, authentication input, and local preferences, and renders the header itself.
+`src/renderer/src/App.tsx` is the application coordinator. It owns Inbox data, selection, pending marks, sender rules, view state, filtering, authentication input, and local preferences, and renders the header itself.
 
-The UI is split into focused Svelte components:
+The UI is split into focused React components:
 
-- `TriageRows.svelte` — the sender-banded Inbox list, row controls, and the mouse selection model
-- `StagingBins.svelte` — the two staging bins, the peek, and Apply
-- `ThemePicker.svelte` — colour theme selection; also exports `applyTheme` / `loadTheme`
-- `MarkedItemsView.svelte` — sender-rule list and filtering
-- `MarkedItemEditor.svelte` — sender-rule create/edit dialog
-- `ErrorPanel.svelte` — Gmail errors and authorization-code entry
+- `TriageRows.tsx` — the sender-banded Inbox list, row controls, and the mouse selection model
+- `StagingBins.tsx` — the two staging bins, the peek, and Apply
+- `ThemePicker.tsx` — colour theme selection; also exports `applyTheme` / `loadTheme`
+- `MarkedItemsView.tsx` — sender-rule list and filtering
+- `MarkedItemEditor.tsx` — sender-rule create/edit dialog
+- `ErrorPanel.tsx` — Gmail errors and authorization-code entry
 
 Shared domain-facing types are in `src/renderer/src/types.ts`. Pure helpers live in `src/renderer/src/lib/` — `selection.ts` holds the three-button selection model, `sender.ts` the From-header helpers.
 
@@ -163,7 +163,7 @@ Selections and pending message marks are session state. They are cleared when th
 ```text
 src/main/                 Electron host and Gmail integration
 src/preload/              Context-bridge setup and global typing
-src/renderer/src/         Svelte UI, state orchestration, and shared types
+src/renderer/src/         React UI, state orchestration, and shared types
 resources/                Runtime application icon
 build/                    Packaged application icon and macOS entitlements
 README.md                 Setup and build instructions
