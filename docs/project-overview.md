@@ -114,7 +114,7 @@ Mado Mail is an Electron application with a React renderer and TypeScript throug
 
 ### Preload boundary
 
-`src/preload/index.ts` exposes Electron's IPC renderer API to the renderer through the context bridge. The custom `api` object is currently empty; Gmail operations are invoked through the exposed Electron IPC interface.
+`src/preload/index.ts` exposes Electron's IPC renderer API through the context bridge. The typed `window.api.settings` API loads and updates desktop preferences; Gmail operations use the exposed Electron IPC interface. `src/main/settings-store.ts` validates preferences and writes `~/.mado/mado_mail/settings.json` by replacing it with a completed temporary file.
 
 ### Renderer
 
@@ -124,7 +124,9 @@ The UI is split into focused React components:
 
 - `TriageRows.tsx` — the sender-banded Inbox list, row controls, and the mouse selection model
 - `StagingBins.tsx` — the two staging bins, the peek, and Apply
-- `ThemePicker.tsx` — colour theme selection; also exports `applyTheme` / `loadTheme`
+- `ThemePicker.tsx`: colour theme selection; desktop persistence belongs to App and the settings API
+- `InboxPanes.tsx`: nested resizable groups using `react-resizable-panels`
+- `EmailReader.tsx`: the plain-text reading pane
 - `MarkedItemsView.tsx` — sender-rule list and filtering
 - `MarkedItemEditor.tsx` — sender-rule create/edit dialog
 - `ErrorPanel.tsx` — Gmail errors and authorization-code entry
@@ -139,11 +141,17 @@ Shared domain-facing types are in `src/renderer/src/types.ts`. Pure helpers live
 
 Gmail is the source of Inbox messages. The app does not include a separate backend or application database.
 
-The renderer stores these preferences locally:
+The main process stores these preferences in `~/.mado/mado_mail/settings.json`:
 
-- Auto-apply setting
-- saved sender rules
-- the selected colour theme
+- `autoApply`: whether actions apply immediately
+- `markedItems`: saved sender rules
+- `theme`: the selected colour theme
+- `paneSizes`: the horizontal Inbox/staging split and vertical list/reader split
+
+App loads settings before mounting the Inbox and saves preference changes through IPC.
+Existing localStorage preferences migrate only if the settings file is missing.
+File errors are shown with a retry option; malformed files are not overwritten.
+Pane sizes save when a drag or keyboard resize completes, not during every pointer move.
 
 Selections and pending message marks are session state. They are cleared when the Inbox is refreshed and are not stored as Gmail labels or server-side rules.
 

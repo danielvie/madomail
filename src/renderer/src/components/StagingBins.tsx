@@ -178,7 +178,7 @@ export default function StagingBins({
   }
 
   return (
-    <aside className="relative flex min-h-0 flex-col bg-panel">
+    <aside className="relative flex h-full min-h-0 flex-col bg-panel">
       <div className="flex items-baseline gap-2 px-3 py-2">
         <span className="font-mono text-[11px] tracking-widest text-ink-dim">STAGING</span>
         <span className="font-mono text-[11px] text-ink-dim">{total} pending</span>

@@ -7,6 +7,8 @@ type VRow = Row & { band: Band; msg?: EmailMsg; header: boolean }
 type Props = {
   emails: EmailMsg[]
   selection: Set<string>
+  readingId: string | null
+  onread: (id: string) => void
   rules: MarkedItem[]
   onselect: (next: Set<string>) => void
   onmark: (ids: string[], action: MarkAction) => void
@@ -16,6 +18,8 @@ type Props = {
 export default function TriageRows({
   emails,
   selection,
+  readingId,
+  onread,
   rules,
   onselect,
   onmark,
@@ -87,7 +91,7 @@ export default function TriageRows({
   const scope = (ids: string[]) =>
     selection.size && ids.some((id) => selection.has(id)) ? [...selection] : ids
   const actions = (ids: string[], from: string, always: boolean) => (
-    <span className="flex w-[24ch] shrink-0 items-center justify-end gap-1 opacity-0 group-hover:opacity-100">
+    <span className="flex w-[24ch] shrink-0 items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
       <button
         className="rounded px-1.5 py-0.5 font-mono text-[10px] hover:bg-brand"
         onClick={(e) => {
@@ -133,8 +137,10 @@ export default function TriageRows({
   )
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-y border-line px-3 py-1.5 font-mono text-[10px] tracking-widest text-ink-dim">
-        <span className="w-4" />
+      <div className="flex items-center gap-3 border-y border-line pr-3 py-1.5 font-mono text-[10px] tracking-widest text-ink-dim">
+        <span className="w-11 shrink-0 text-center tracking-normal" title="Selection area">
+          SEL
+        </span>
         <span className="w-4" />
         <span className="w-[24ch]">FROM</span>
         <span className="min-w-0 flex-1">SUBJECT</span>
@@ -152,10 +158,15 @@ export default function TriageRows({
               return (
                 <div
                   key={r.key}
-                  className="flex items-center gap-3 border-b border-line bg-panel pr-3 text-sm"
+                  className="group flex items-center gap-3 border-b border-line bg-panel pr-3 text-sm"
                 >
-                  <span className="w-4" />
-                  <button className="w-4" onClick={() => toggle(r.band.key)}>
+                  <span className="w-11 shrink-0" />
+                  <button
+                    className="w-4 shrink-0"
+                    aria-label={`Collapse messages from ${senderName(r.band.from)}`}
+                    aria-expanded={true}
+                    onClick={() => toggle(r.band.key)}
+                  >
                     ▾
                   </button>
                   <span className="w-[24ch] truncate py-2 font-semibold">
@@ -176,71 +187,100 @@ export default function TriageRows({
               some = !on && r.ids.some((id) => selection.has(id)),
               multi = !r.msg && r.band.msgs.length > 1,
               rule = ruleFor(r.band.from),
-              m = r.msg ?? r.band.msgs[0]
+              m = r.msg ?? r.band.msgs[0],
+              reading = r.ids.includes(readingId ?? '')
+            // The displayed email stays distinct from messages selected for bulk actions.
+            const background = reading
+              ? 'bg-brand/25'
+              : on || some
+                ? 'bg-brand/10'
+                : `${multi ? 'bg-panel' : r.msg ? 'bg-panel/60' : ''} hover:bg-panel2`
             return (
               <div
                 key={r.key}
-                className={`group flex items-center gap-3 border-b border-line border-l-2 pr-3 text-sm ${on || some ? 'border-l-brand bg-brand/10' : 'border-l-transparent hover:bg-panel2'} ${multi ? 'bg-panel' : ''} ${r.msg ? 'bg-panel/60' : ''}`}
-                role="row"
-                tabIndex={-1}
-                onClick={() => left(r.key)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    left(r.key)
-                  }
-                }}
-                onContextMenu={(e) => right(e, r.key)}
-                onMouseDown={(e) => e.button === 1 && e.preventDefault()}
-                onAuxClick={(e) => middle(e, r.key)}
+                className={`group flex items-stretch gap-3 border-b border-line pr-3 text-sm ${background}`}
               >
-                <span className="pl-3">
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={some ? 'mixed' : on}
+                  aria-label={
+                    multi
+                      ? `Select all ${r.band.msgs.length} messages from ${senderName(r.band.from)}`
+                      : `Select ${m.subject || 'message'}`
+                  }
+                  title="Left: select · Right: range · Middle: fill / clear"
+                  className="flex w-11 shrink-0 cursor-pointer items-center justify-center border-r border-line focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                  onClick={() => left(r.key)}
+                  onContextMenu={(e) => right(e, r.key)}
+                  onMouseDown={(e) => e.button === 1 && e.preventDefault()}
+                  onAuxClick={(e) => middle(e, r.key)}
+                >
                   <span
                     className={`grid size-4 place-items-center rounded border font-mono text-[10px] leading-none ${on ? 'border-brand bg-brand text-on-brand' : some ? 'border-brand text-brand' : 'border-ink-dim/50 text-transparent'}`}
                   >
                     {on ? '✓' : some ? '–' : '·'}
                   </span>
-                </span>
-                <button
-                  className="w-4 font-mono text-[10px] text-ink-dim"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (multi) toggle(r.band.key)
-                  }}
-                >
-                  {multi ? '▸' : ''}
                 </button>
-                <span className="w-[24ch] truncate py-2 font-semibold">
-                  {r.msg ? (
-                    '·'
-                  ) : (
-                    <>
-                      {senderName(r.band.from)} {multi && <small>{r.band.msgs.length}</small>}{' '}
-                      {rule && (
-                        <small className={rule.action === 'archive' ? 'text-brand' : 'text-danger'}>
-                          RULE
-                        </small>
-                      )}
-                    </>
-                  )}
-                </span>
-                <span className={`min-w-0 flex-1 truncate ${multi ? 'text-ink-dim' : ''}`}>
-                  {r.msg
-                    ? m.subject
-                    : multi
-                      ? `${r.band.msgs.length} messages — ${m.subject}`
-                      : m.subject}
-                </span>
-                <span className="w-[17ch] whitespace-nowrap text-right font-mono text-[10px] text-ink-dim">
-                  {formatDate(m.date)}
-                </span>
+                {multi ? (
+                  <button
+                    className="w-4 shrink-0 font-mono text-[10px] text-ink-dim"
+                    aria-label={`Expand messages from ${senderName(r.band.from)}`}
+                    aria-expanded={false}
+                    onClick={() => toggle(r.band.key)}
+                  >
+                    ▸
+                  </button>
+                ) : (
+                  <span className="w-4 shrink-0" />
+                )}
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-2 text-left focus-visible:underline focus-visible:underline-offset-4 focus-visible:outline-none"
+                  aria-label={`Read ${m.subject || 'message'}${multi ? `, first of ${r.band.msgs.length} messages` : ''}`}
+                  aria-pressed={reading}
+                  title={
+                    multi
+                      ? 'Read first message. Expand the sender to read other messages.'
+                      : 'Read message'
+                  }
+                  onClick={() => onread(m.id)}
+                >
+                  <span className="w-[24ch] shrink-0 truncate font-semibold">
+                    {r.msg ? (
+                      '·'
+                    ) : (
+                      <>
+                        {senderName(r.band.from)} {multi && <small>{r.band.msgs.length}</small>}{' '}
+                        {rule && (
+                          <small
+                            className={rule.action === 'archive' ? 'text-brand' : 'text-danger'}
+                          >
+                            RULE
+                          </small>
+                        )}
+                      </>
+                    )}
+                  </span>
+                  <span className={`min-w-0 flex-1 truncate ${multi ? 'text-ink-dim' : ''}`}>
+                    {r.msg
+                      ? m.subject
+                      : multi
+                        ? `${r.band.msgs.length} messages — ${m.subject}`
+                        : m.subject}
+                  </span>
+                  <span className="w-[17ch] whitespace-nowrap text-right font-mono text-[10px] text-ink-dim">
+                    {formatDate(m.date)}
+                  </span>
+                </button>
                 {actions(r.ids, r.band.from, !r.msg)}
               </div>
             )
           })
         )}
       </div>
-      <div className="flex items-center gap-4 border-t border-line px-3 py-1.5 font-mono text-[10px] text-ink-dim">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-line px-3 py-1.5 font-mono text-[10px] text-ink-dim">
+        <span>Checkbox area:</span>
         <span>
           <b>left</b> select
         </span>
@@ -250,6 +290,7 @@ export default function TriageRows({
         <span>
           <b>middle</b> fill / clear
         </span>
+        <span className="ml-auto">Click email to read</span>
       </div>
     </div>
   )

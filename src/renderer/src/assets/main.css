@@ -19,15 +19,29 @@
   --color-danger: var(--danger);
   --color-on-danger: var(--on-danger);
 
-  /* Legacy names kept so the earlier prototype variants still render. Note that
-     `text-base` resolves to the canvas colour here, not a font size — that is a
-     deliberate carry-over of the original palette's idiom. */
-  --color-base: var(--canvas);
-  --color-surface: var(--panel);
-  --color-surface-hover: var(--panel2);
-  --color-surface-active: var(--panel3);
-  --color-accent: var(--ink);
-  --color-accent-dim: var(--ink-dim);
+}
+
+.pane-divider {
+  position: relative;
+  background: var(--line);
+  outline: none;
+}
+.pane-divider:hover,
+.pane-divider:focus-visible,
+.pane-divider[data-separator="active"] {
+  background: var(--accent);
+}
+.pane-divider-vertical {
+  width: 5px;
+  cursor: col-resize;
+}
+.pane-divider-horizontal {
+  height: 5px;
+  cursor: row-resize;
+}
+.pane-divider[aria-disabled="true"] {
+  background: var(--line);
+  cursor: default;
 }
 
 @layer base {

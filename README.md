@@ -22,6 +22,7 @@ A desktop Gmail client built with Electron, React, and TypeScript. Mado Mail pro
 
 - [Project overview](docs/project-overview.md) — current user workflows, domain model, architecture, and limitations.
 - [Domain context](CONTEXT.md) — canonical terminology for Inbox triage, marks, and sender rules.
+- [App icon](docs/app-icon.md): Signal artwork and asset generation.
 
 ## Getting Started
 
@@ -71,6 +72,36 @@ npm run build:linux
 ```
 
 The build artifacts will be located in the `dist` directory.
+
+## Settings and pane sizes
+
+The desktop app saves preferences in `~/.mado/mado_mail/settings.json`. On Windows,
+this is `%USERPROFILE%\.mado\mado_mail\settings.json`.
+
+The file contains `theme`, `autoApply`, saved sender rules in `markedItems`, and
+`paneSizes`. The pane values are percentages: `inbox` is the left column's share
+of the window, and `list` is the email list's share of the left column while the
+reader is open.
+
+```json
+{
+  "theme": "frost",
+  "autoApply": false,
+  "markedItems": [],
+  "paneSizes": { "inbox": 75, "list": 60 }
+}
+```
+
+Drag the divider beside staging or above the reader to resize the panes. You can
+also focus a divider with Tab and use the arrow keys. Closing the reader keeps
+its last expanded size.
+
+Changes save automatically. The first launch without a settings file migrates
+existing browser-stored preferences. To edit the JSON yourself, close the app
+first and restart it afterward. Invalid files produce an error rather than being
+replaced. Gmail credentials and tokens remain in their separate files.
+
+Run `npm run test:settings` to test file persistence using temporary directories.
 
 ## Recommended IDE Setup
 

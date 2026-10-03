@@ -1,8 +1,13 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
+import type { SettingsAPI } from '../shared/settings'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
-const api = {}
+const settings: SettingsAPI = {
+  load: (legacy) => ipcRenderer.invoke('settings-load', legacy),
+  update: (patch) => ipcRenderer.invoke('settings-update', patch)
+}
+const api = { settings }
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

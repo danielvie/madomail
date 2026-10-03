@@ -1,23 +1,61 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { AppSettings } from '../../shared/settings'
+import { readLegacySettings } from './lib/settings'
+import InboxPanes from './components/InboxPanes'
 import ErrorPanel from './components/ErrorPanel'
+import EmailReader from './components/EmailReader'
 import MarkedItemEditor from './components/MarkedItemEditor'
 import MarkedItemsView from './components/MarkedItemsView'
 import StagingBins from './components/StagingBins'
-import ThemePicker, { loadTheme } from './components/ThemePicker'
+import ThemePicker, { applyTheme } from './components/ThemePicker'
 import TriageRows from './components/TriageRows'
 import { senderAddr } from './lib/sender'
 import type { EmailMsg, MarkAction, MarkedItem, ViewMode } from './types'
 
-function readSavedMarkedItems(): MarkedItem[] {
-  try {
-    const saved = localStorage.getItem('markedItems')
-    if (!saved) return []
-    const parsed: unknown = JSON.parse(saved)
-    return Array.isArray(parsed) ? (parsed as MarkedItem[]) : []
-  } catch (error) {
-    console.error('Failed to parse markedItems', error)
-    return []
-  }
+export default function App() {
+  const [settings, setSettings] = useState<AppSettings | null>(null)
+  const [settingsError, setSettingsError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    setSettingsError('')
+    window.api.settings
+      .load(readLegacySettings())
+      .then((loaded) => {
+        if (cancelled) return
+        applyTheme(loaded.theme)
+        setSettings(loaded)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setSettingsError(String(error))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [attempt])
+  if (settings) return <Mailbox initialSettings={settings} />
+  return (
+    <main className="flex h-screen flex-col items-center justify-center gap-3 bg-canvas p-6 text-ink">
+      {settingsError ? (
+        <>
+          <p role="alert" className="max-w-xl whitespace-pre-wrap text-danger">
+            Unable to load settings: {settingsError}
+          </p>
+          <p className="text-sm text-ink-dim">
+            Check ~/.mado/mado_mail/settings.json. The file has not been replaced.
+          </p>
+          <button
+            className="rounded border border-line px-3 py-2"
+            onClick={() => setAttempt((value) => value + 1)}
+          >
+            Retry
+          </button>
+        </>
+      ) : (
+        <p>Loading settings…</p>
+      )}
+    </main>
+  )
 }
 
 type FetchResponse = {
@@ -31,18 +69,23 @@ type ResultResponse = {
   error?: string
 }
 
-export default function App() {
+function Mailbox({ initialSettings }: { initialSettings: AppSettings }) {
   const [emails, setEmails] = useState<EmailMsg[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [readingId, setReadingId] = useState<string | null>(null)
   const [markedActions, setMarkedActions] = useState<Record<string, MarkAction>>({})
-  const [markedItems, setMarkedItems] = useState<MarkedItem[]>(readSavedMarkedItems)
+  const [markedItems, setMarkedItems] = useState<MarkedItem[]>(initialSettings.markedItems)
   const [viewMode, setViewMode] = useState<ViewMode>('emails')
   const [actionInProgress, setActionInProgress] = useState(false)
-  const [autoApply, setAutoApply] = useState(() => localStorage.getItem('autoApply') === 'true')
-  const [theme, setTheme] = useState<string>(() => loadTheme())
+  const [autoApply, setAutoApply] = useState(initialSettings.autoApply)
+  const [theme, setTheme] = useState(initialSettings.theme)
+  const [paneSizes, setPaneSizes] = useState(initialSettings.paneSizes)
+  const [settingsError, setSettingsError] = useState('')
+  const [saveAttempt, setSaveAttempt] = useState(0)
+  const lastRequested = useRef(JSON.stringify(initialSettings))
   const [editingOpen, setEditingOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<MarkedItem | null>(null)
   const [editingFrom, setEditingFrom] = useState('')
@@ -60,18 +103,35 @@ export default function App() {
     })
   }, [emails, markedActions, searchQuery])
   const senderCount = new Set(undecided.map((email) => senderAddr(email.from))).size
+  const readingEmail = undecided.find((email) => email.id === readingId) ?? null
+
+  useEffect(() => {
+    if (!readingEmail) setReadingId(null)
+  }, [readingEmail])
 
   useEffect(() => {
     void fetchEmails()
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('autoApply', autoApply.toString())
-  }, [autoApply])
-
-  useEffect(() => {
-    localStorage.setItem('markedItems', JSON.stringify(markedItems))
-  }, [markedItems])
+    const next = { theme, autoApply, markedItems, paneSizes }
+    const serialized = JSON.stringify(next)
+    if (serialized === lastRequested.current && saveAttempt === 0) return undefined
+    lastRequested.current = serialized
+    let cancelled = false
+    window.api.settings
+      .update(next)
+      .then(() => {
+        if (cancelled) return
+        setSettingsError('')
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setSettingsError(String(error))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [theme, autoApply, markedItems, paneSizes, saveAttempt])
 
   function formatEmailDate(date: string): string {
     const parsed = new Date(date)
@@ -280,12 +340,25 @@ export default function App() {
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-canvas text-ink">
       <header className="flex items-center gap-2 border-b border-line px-3 py-2">
-        <input
-          className="w-52 rounded-md border border-line bg-panel px-3 py-1.5 text-sm outline-none placeholder:text-ink-dim"
-          placeholder="Filter..."
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-        />
+        <div className="relative">
+          <input
+            className="w-52 rounded-md border border-line bg-panel px-3 py-1.5 pr-8 text-sm outline-none placeholder:text-ink-dim"
+            placeholder="Filter..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-sm leading-none text-ink-dim hover:bg-panel2 hover:text-ink"
+              aria-label="Clear filter"
+              title="Clear filter"
+              onClick={() => setSearchQuery('')}
+            >
+              ×
+            </button>
+          )}
+        </div>
         <button
           className="rounded-md border border-line px-2.5 py-1.5 font-mono text-[10px] hover:bg-panel2 disabled:opacity-30"
           disabled={markedItems.length === 0 || loading}
@@ -343,6 +416,21 @@ export default function App() {
         <ThemePicker current={theme} onChange={setTheme} />
       </header>
 
+      {settingsError && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 border-b border-danger bg-panel px-3 py-2 text-sm text-danger"
+        >
+          <span>Settings could not be saved: {settingsError}</span>
+          <button
+            className="shrink-0 rounded border border-danger px-2 py-1"
+            onClick={() => setSaveAttempt((value) => value + 1)}
+          >
+            Retry save
+          </button>
+        </div>
+      )}
+
       {error && (
         <ErrorPanel
           error={error}
@@ -360,26 +448,42 @@ export default function App() {
           onDelete={deleteMarkedItem}
         />
       ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_300px] divide-x divide-line">
-          <TriageRows
-            emails={undecided}
-            selection={selectedIds}
-            rules={markedItems}
-            onselect={setSelectedIds}
-            onmark={(ids, action) => void mark(ids, action)}
-            onalways={(from, action) => void always(from, action)}
-            formatDate={formatEmailDate}
-          />
-          <StagingBins
-            emails={emails}
-            marks={markedActions}
-            rules={markedItems}
-            busy={actionInProgress}
-            onunmark={unmark}
-            onunmarkall={() => setMarkedActions({})}
-            onapply={() => void executeActions()}
-          />
-        </div>
+        <InboxPanes
+          sizes={paneSizes}
+          onSizesChange={setPaneSizes}
+          readerOpen={!!readingEmail}
+          list={
+            <TriageRows
+              emails={undecided}
+              selection={selectedIds}
+              readingId={readingId}
+              rules={markedItems}
+              onread={setReadingId}
+              onselect={setSelectedIds}
+              onmark={(ids, action) => void mark(ids, action)}
+              onalways={(from, action) => void always(from, action)}
+              formatDate={formatEmailDate}
+            />
+          }
+          reader={
+            <EmailReader
+              email={readingEmail}
+              onClose={() => setReadingId(null)}
+              formatDate={formatEmailDate}
+            />
+          }
+          staging={
+            <StagingBins
+              emails={emails}
+              marks={markedActions}
+              rules={markedItems}
+              busy={actionInProgress}
+              onunmark={unmark}
+              onunmarkall={() => setMarkedActions({})}
+              onapply={() => void executeActions()}
+            />
+          }
+        />
       )}
 
       {editingOpen && (

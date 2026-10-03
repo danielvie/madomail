@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Mado Mail">
+  <title>Mado Mail, Signal</title>
+  <circle cx="128" cy="128" r="112" fill="#f2f0e8"/>
+  <rect x="56" y="87" width="144" height="102" rx="17" fill="#202524"/>
+  <path d="m64 96 64 49 64-49" fill="none" stroke="#f2f0e8" stroke-width="11" stroke-linejoin="round"/>
+  <circle cx="193" cy="65" r="32" fill="#f2f0e8"/>
+  <circle cx="193" cy="65" r="23" fill="#e26343"/>
+</svg>

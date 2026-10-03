@@ -9,7 +9,6 @@
 //
 // A "row" is the unit, not a message: a collapsed sender band is one row holding
 // several ids, so a middle-click run can cover senders rather than messages.
-// Validated in the layout prototype (round four).
 
 export type Row = { key: string; ids: string[] }
 

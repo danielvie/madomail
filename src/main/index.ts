@@ -1,5 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { homedir } from 'os'
+import { SettingsStore } from './settings-store'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
@@ -10,7 +12,7 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -48,6 +50,10 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  const settings = new SettingsStore(join(homedir(), '.mado', 'mado_mail', 'settings.json'))
+  ipcMain.handle('settings-load', (_, legacy: unknown) => settings.load(legacy))
+  ipcMain.handle('settings-update', (_, patch: unknown) => settings.update(patch))
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
