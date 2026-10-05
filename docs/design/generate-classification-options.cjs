@@ -228,7 +228,7 @@ lines(1640, 1920, [
 section(2320, '04  Implementation instructions', 'Work in the Rust GPUI app. Implement after design approval; no application code changes are included in this diagram.');
 panel('impl-data', 40, 2410, 1136, 550, '1  Load and resolve label metadata');
 lines(64, 2486, [
-  'File: gpui-poc/src/gmail.rs',
+  'File: src/gmail.rs',
   'Add label_ids to Email and deserialize Message.labelIds with a default.',
   'Keep those IDs when Message::into_email builds the Inbox model.',
   'Fetch users.labels.list once per refresh, not once per message.',
@@ -245,7 +245,7 @@ source.link = 'https://developers.google.com/workspace/gmail/api/reference/rest/
 
 panel('impl-layout', 1224, 2410, 1136, 550, '2  Render badges and contextual controls');
 lines(1248, 2486, [
-  'Files: gpui-poc/src/main.rs and gpui-poc/src/triage.rs',
+  'Files: src/main.rs and src/triage.rs',
   'In row(), remove the fixed 250/142 px THIS / ALWAYS column.',
   'Place a capped badge strip before subject text; remaining subject truncates.',
   'For groups, derive label counts from row.ids, not from the whole sender.',
@@ -260,7 +260,7 @@ lines(1248, 2486, [
 
 panel('impl-events', 40, 2992, 1136, 600, '3  Route menu and drop actions through existing commands');
 lines(64, 3068, [
-  'File: gpui-poc/src/main.rs; row(), bins(), stage(), Command and table_key()',
+  'File: src/main.rs; row(), bins(), stage(), Command and table_key()',
   'Store menu row key, message IDs and anchor. Clamp popup to the viewport.',
   'Dismiss on outside click/Esc; close if refresh/filter invalidates the row.',
   'Archive/Trash reuse Command::Stage; extend rule editor with sender-create mode.',

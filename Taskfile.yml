@@ -10,95 +10,95 @@ tasks:
   run:
     desc: Run the Rust GPUI Gmail triage app
     cmds:
-      - cargo run --manifest-path gpui-poc/Cargo.toml --release
+      - cargo run --release
 
   demo:
     desc: Open the triage layout with synthetic mail and no Gmail access
     cmds:
-      - cargo run --manifest-path gpui-poc/Cargo.toml --release -- --demo
+      - cargo run --release -- --demo
 
   check-triage:
     desc: Check labels, row menus, mail drops, selection, reader, and pane layout with synthetic mail
     deps: [build]
     cmds:
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1
 
   check-scrollbar:
     desc: Check Inbox scrollbar dragging, paging, wheel, keyboard, and both reader layouts
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -ScrollbarOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -ScrollbarOnly
 
   check-detach:
     desc: Check pinned reader windows, independent image controls, and unchanged Inbox state
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -DetachOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -DetachOnly
 
   check-selection:
     desc: Check middle-click select-all and clear-all behavior with synthetic messages
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -MiddleOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -MiddleOnly
 
   check-bulk-actions:
     desc: Check selected-message Read, Unread, Archive, Trash, menus, and auto-apply
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -SelectedActionsOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -SelectedActionsOnly
 
   check-spaces:
     desc: Check inline spaces, fuzzy label selection, mail drops, and explicit Apply without Gmail
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -SpacesOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -SpacesOnly
 
   check-labels:
     desc: Check label filters, hover assignment, searchable pickers, and safe targeting without Gmail
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -LabelsOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -LabelsOnly
 
   check-reader-visibility:
     desc: Verify list clicks keep a hidden reader hidden and preserve its message
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -ReaderVisibilityOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -ReaderVisibilityOnly
 
   check-label-removal:
     desc: Check message-label removal, group confirmation, scope, and preserved INBOX without Gmail
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml
-      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -LabelRemovalOnly
+      - cargo build
+      - powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -LabelRemovalOnly
 
   reader-demo:
     desc: Open the synthetic HTML reader without accessing Gmail
     cmds:
-      - cargo run --manifest-path gpui-poc/Cargo.toml --release -- --reader-demo
+      - cargo run --release -- --reader-demo
 
   check-reader:
     desc: Verify the restricted WebView2 reader using an offline synthetic email
     deps: [build]
     cmds:
-      - powershell.exe -NoProfile -File gpui-poc/check-reader.ps1
+      - powershell.exe -NoProfile -File scripts/check-reader.ps1
 
   build:
     desc: Build the Rust GPUI Gmail triage app
     cmds:
-      - cargo build --manifest-path gpui-poc/Cargo.toml --release
+      - cargo build --release
 
   test:
     desc: Test triage, settings, synthetic Gmail requests, and the reader
     cmds:
-      - cargo test --manifest-path gpui-poc/Cargo.toml
+      - cargo test
 
   check-window:
     desc: Verify the synthetic triage window and capture only that window
     deps: [build]
     cmds:
-      - powershell.exe -NoProfile -File gpui-poc/check-window.ps1 -Demo
+      - powershell.exe -NoProfile -File scripts/check-window.ps1 -Demo
 
   clean:
     desc: Clean Rust build artifacts
     cmds:
-      - cargo clean --manifest-path gpui-poc/Cargo.toml
+      - cargo clean

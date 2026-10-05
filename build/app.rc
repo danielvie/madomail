@@ -1,0 +1,2 @@
+// GPUI loads resource 1 as the native window icon.
+1 ICON "build/icon.ico"

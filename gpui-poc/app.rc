@@ -1,2 +1,0 @@
-// GPUI loads resource 1 as the native window icon. Reuse the main branch's Windows icon.
-1 ICON "../build/icon.ico"

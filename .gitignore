@@ -1,5 +1,5 @@
 .DS_Store
 *.log*
-/gpui-poc/target/
+/target/
 client_secret.json
 token.json

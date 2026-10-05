@@ -1,6 +1,6 @@
 # Mado Mail project overview
 
-Mado Mail is a Windows Gmail Inbox-triage application built with Rust and GPUI. It groups mail by sender, supports batch decisions, and provides a restricted HTML reader. The former Electron/React application is no longer part of the working tree.
+Mado Mail is a Windows Gmail Inbox-triage application built with Rust and GPUI. It groups mail by sender, supports batch decisions, and provides a restricted HTML reader. The repository root is a single Rust crate named `mado-mail`.
 
 ## User workflow
 
@@ -33,7 +33,7 @@ Rules use case-insensitive substring matching; the first match wins. Run query d
 
 ## Architecture
 
-- `gpui-poc/src/main.rs` coordinates the native UI, application state, commands, and background jobs.
+- `src/main.rs` coordinates the native UI, application state, commands, and background jobs.
 - `triage.rs` implements grouping, selection, rules, staging, and write outcomes.
 - `gmail.rs` implements OAuth, Windows Credential Manager storage, Gmail requests, MIME decoding, and reconciliation.
 - `settings.rs` implements settings, separate rules, import/export, backups, and the submission journal.
@@ -62,11 +62,17 @@ Ordinary unsubmitted marks and selection are temporary. Submitted work is record
 ## Repository map
 
 ```text
-gpui-poc/          Rust application, fixtures, licenses, and native check scripts
-build/             Windows icon and editable SVG source
-docs/              Application documentation and design/research history
-handoff/           Historical migration handoff
+Cargo.toml         Single application crate; builds mado-mail.exe
+src/               Rust modules, inline tests, and native UI checks
+assets/icons/      Embedded SVG UI icons
+fixtures/          Synthetic mail and reader assets
+build/             Windows resource definition, icon, and editable SVG source
+build.rs           Embeds Windows resources during the Cargo build
+scripts/           PowerShell launchers and window capture for native checks
+licenses/          Bundled dependency license notices
+docs/              Application guide and design/research documentation
+docs/history/      Historical migration handoff
 Taskfile.yml       Run, build, test, clean, and focused native UI checks
 ```
 
-See `gpui-poc/README.md` for detailed behavior and checks.
+See `docs/application.md` for detailed behavior and checks.

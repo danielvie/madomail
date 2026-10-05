@@ -1,6 +1,6 @@
 # Mado Mail
 
-A Windows Gmail triage app built with Rust and GPUI. The application lives in `gpui-poc/`; the previous Electron/React project has been removed.
+A Windows Gmail triage app built with Rust and GPUI. The repository root is a single Rust crate; application code lives in `src/`.
 
 ## Requirements
 
@@ -15,14 +15,14 @@ A Windows Gmail triage app built with Rust and GPUI. The application lives in `g
 task run           # Build and launch with Gmail
 task demo          # Synthetic Inbox, no Gmail access or personal settings writes
 task reader-demo   # Synthetic HTML reader
-task build         # Release executable in gpui-poc/target/release/mado-mail-poc.exe
+task build         # Release executable in target/release/mado-mail.exe
 task test          # Model, settings, OAuth, MIME, and synthetic HTTP tests
 task check-triage  # Native UI checks with synthetic mail
 task clean         # Remove Rust build artifacts
 task --list        # Additional focused UI checks
 ```
 
-Without Task, run `cargo run --manifest-path gpui-poc/Cargo.toml --release`. Cargo fetches the required Rust dependencies.
+Without Task, run `cargo run --release`. Cargo fetches the required Rust dependencies.
 
 ## Gmail setup
 
@@ -35,9 +35,9 @@ Refresh tokens use Windows Credential Manager. Settings, sender rules, and submi
 
 ## Documentation
 
-- [Application guide](gpui-poc/README.md): controls, settings, recovery, and checks.
+- [Application guide](docs/application.md): controls, settings, recovery, and checks.
 - [Project overview](docs/project-overview.md): workflows, architecture, and limitations.
 - [Code context](CONTEXT.md): module responsibilities and triage terminology.
 - [App icon](docs/app-icon.md): Windows icon assets.
 
-Design and research documents retain migration history. Matched speed and total-memory comparisons against the former Electron app have not been performed.
+Design, research, and `docs/history/` documents retain migration history, including paths and names from earlier snapshots. Matched speed and total-memory comparisons against the former Electron app have not been performed.
