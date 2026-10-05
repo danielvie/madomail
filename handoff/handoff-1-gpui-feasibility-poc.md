@@ -1,5 +1,7 @@
 # Rust + GPUI feasibility PoC handoff
 
+Historical handoff. The migration has since been promoted to `main`, and the former Electron/React project has been removed. Use `README.md`, `CONTEXT.md`, and `gpui-poc/README.md` for the current application.
+
 ## Goal and current phase
 
 The user wants a faster, lower-memory Rust + GPUI version of Mado Mail. We are building small proofs of concept to validate feasibility before implementing the full application. The current PoC is not the triage rewrite and does not establish that the performance goal has been met.

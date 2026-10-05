@@ -1,38 +1,37 @@
 # Code context
 
-## Entry points
+## Entry points and modules
 
-- `src/main/index.ts` creates the Electron window and registers settings IPC.
-- `src/main/gmail.ts` registers Gmail Inbox, archive, trash, and authorization IPC.
-- `src/preload/index.ts` exposes Electron IPC and the typed `window.api.settings` API.
-- `src/renderer/src/main.tsx` mounts the React application and imports its CSS.
-- `src/renderer/src/App.tsx` loads settings before mounting the mailbox, then coordinates Inbox data, selection, marks, sender rules, reading state, and preferences.
+- `gpui-poc/src/main.rs` starts the GPUI application and coordinates Inbox state, commands, panes, rules, settings, and background Gmail work.
+- `gpui-poc/src/triage.rs` owns sender grouping, filtering, selection, pending decisions, rule matching, and per-message write outcomes.
+- `gpui-poc/src/gmail.rs` owns OAuth with loopback callback and PKCE, credential storage, Inbox retrieval, MIME decoding, Gmail writes, and reconciliation.
+- `gpui-poc/src/settings.rs` validates and saves preferences, separate sender rules, imports, and submission journals.
+- `gpui-poc/src/reader.rs` hosts the restricted WebView2 HTML reader through Wry. `message.rs` sanitizes content and defines resource/link policies.
+- `gpui-poc/src/input.rs` implements text input. `theme.rs` and `icons.rs` provide GPUI presentation assets.
+- `gpui-poc/src/labels.rs` and `label_ui.rs` provide label metadata, chips, filtering, and assignment controls.
+- `gpui-poc/src/spaces.rs` and `space_ui.rs` provide saved label destinations and staging controls.
+- `gpui-poc/src/*_check.rs` contain synthetic native UI checks.
 
-## Production UI
+## Triage terminology
 
-- `TriageRows.tsx` groups emails by sender. Clicking a message opens the reader. The checkbox strip owns left-click selection, right-click range selection, and middle-click fill/clear.
-- `EmailReader.tsx` displays the message body as plain text, with a snippet fallback.
-- `InboxPanes.tsx` uses `react-resizable-panels` for the Inbox/staging and list/reader dividers. Reader height is restored when reopened.
-- `StagingBins.tsx` groups pending archive/delete marks and applies them to Gmail.
-- `ThemePicker.tsx` applies the selected theme through `data-theme` on the document element. App owns persistence.
-- `MarkedItemsView.tsx` and `MarkedItemEditor.tsx` manage sender rules.
-- `ErrorPanel.tsx` handles Gmail errors and authorization-code entry.
+- A message is one Gmail message, not a conversation.
+- A sender group represents messages matching the current filters from one sender.
+- Selection identifies command targets. Opening the reader does not select or mark a message read.
+- A mark is an unsubmitted Archive, Trash, or space decision. Put back cancels it.
+- A sender rule is a saved case-insensitive From substring and Archive or Trash action. The first matching rule wins; Run query stages matches.
+- A space is a saved destination with user labels. Apply adds those labels and removes INBOX.
+- An unknown write outcome requires Gmail reconciliation before cancellation or resubmission.
 
-## State and persistence
+## Persistence and safety
 
-`src/shared/settings.ts` defines settings, defaults, validation, and the preload API contract. `src/main/settings-store.ts` writes `~/.mado/mado_mail/settings.json` using a temporary file and rename.
+Personal files live in `%USERPROFILE%\.mado\mado-mail`: `settings.json`, `rules.json`, `client_secret.json`, `gpui.lock`, and `gpui-submission.json`. Refresh tokens live in Windows Credential Manager.
 
-Persisted settings are `theme`, `autoApply`, `markedItems`, and `paneSizes`. `src/renderer/src/lib/settings.ts` reads legacy localStorage preferences for migration when the settings file is missing. Malformed settings files are not overwritten.
+Settings include the theme, Auto-apply, pane widths, visibility, reader placement/height, and spaces. Selection, reader contents, and ordinary unsubmitted marks are session state. Interrupted submissions survive in the journal and must be reconciled. Invalid settings are reported rather than overwritten.
 
-Selection, pending message marks, the displayed email, and sender expansion are session state. Gmail remains the source of Inbox messages. Credentials and tokens live in separate files beside settings.
-
-`src/renderer/src/types.ts` defines message and triage types. `lib/selection.ts` contains the three-button selection algorithms; `lib/sender.ts` extracts sender names and addresses.
+Archive removes INBOX; Trash is not permanent deletion. Both preserve unread status. Read/unread and direct label assignment/removal write immediately; only confirmed results update local labels. Auto-apply defaults to off. Space decisions always require Apply.
 
 ## Build and checks
 
-- `npm run dev`: Electron development app.
-- `npm run build`: TypeScript checks and production build through electron-vite.
-- `npm run test:settings`: Settings persistence tests using temporary directories.
-- `npm run lint`: Repository ESLint checks.
+Use `task run`, `task demo`, `task build`, `task test`, and the focused `task check-*` tasks. The runtime and build require no Node tooling. `build/icon.ico` is embedded by the Rust build.
 
-See `docs/project-overview.md` for user workflows and current limitations.
+See `gpui-poc/README.md` for detailed controls, settings migration, recovery, and verification limits.

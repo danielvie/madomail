@@ -82,17 +82,6 @@ tasks:
     cmds:
       - powershell.exe -NoProfile -File gpui-poc/check-reader.ps1
 
-  dev:
-    desc: Run the development server
-    cmds:
-      - npm run dev
-
-  install:
-    desc: Install the project
-    aliases: [i]
-    cmds:
-      - pnpm install
-
   build:
     desc: Build the Rust GPUI Gmail triage app
     cmds:

@@ -1,119 +1,43 @@
 # Mado Mail
 
-A desktop Gmail client built with Electron, React, and TypeScript. Mado Mail provides a interface for managing your emails with a focus on speed.
+A Windows Gmail triage app built with Rust and GPUI. The application lives in `gpui-poc/`; the previous Electron/React project has been removed.
 
-## Rust + GPUI application
+## Requirements
 
-The Windows triage implementation lives in `gpui-poc/`. Run `task demo` to try the approved layout with synthetic mail, or `task run` to connect Gmail. It includes sender grouping, filtering, three-button selection, Archive/Delete staging, rules, saved preferences, and the separate restricted HTML reader. Writes require fresh `gmail.modify` consent. Failed and uncertain submissions remain visible for retry or reconciliation.
+- Stable Rust.
+- Visual Studio C++ build tools with a Windows SDK.
+- Microsoft Edge WebView2 Runtime for the restricted HTML reader.
+- Task, optional. Cargo commands work directly.
 
-Electron remains available through `task dev`. Its Rules view can export settings for import into GPUI. No existing credentials or settings are removed. Performance improvements have not yet been measured against Electron.
+## Run and check
 
-See [GPUI setup, controls, migration, and checks](gpui-poc/README.md).
+```text
+task run           # Build and launch with Gmail
+task demo          # Synthetic Inbox, no Gmail access or personal settings writes
+task reader-demo   # Synthetic HTML reader
+task build         # Release executable in gpui-poc/target/release/mado-mail-poc.exe
+task test          # Model, settings, OAuth, MIME, and synthetic HTTP tests
+task check-triage  # Native UI checks with synthetic mail
+task clean         # Remove Rust build artifacts
+task --list        # Additional focused UI checks
+```
 
-## Features
+Without Task, run `cargo run --manifest-path gpui-poc/Cargo.toml --release`. Cargo fetches the required Rust dependencies.
 
-- **Gmail Integration**: Direct integration with Gmail APIs.
-- **Modern UI**: Built with React and Tailwind CSS 4.
-- **Cross-Platform**: Desktop support for Windows, macOS, and Linux.
-- **Advanced Interactions**: Includes pragmatic drag-and-drop for email organization.
+## Gmail setup
 
-## Tech Stack
+1. Enable Gmail API in your Google Cloud project and create a Desktop app OAuth client.
+2. Save the downloaded JSON at `%USERPROFILE%\.mado\mado-mail\client_secret.json`.
+3. Add your account as a test user if the consent app is in Testing.
+4. Run the app and choose Connect Gmail. It requests `gmail.modify` permission.
 
-- **Framework**: [Electron](https://www.electronjs.org/)
-- **Frontend**: [React](https://react.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool**: [electron-vite](https://electron-vite.org/)
-- **APIs**: [Google APIs (Gmail)](https://github.com/googleapis/google-api-nodejs-client)
+Refresh tokens use Windows Credential Manager. Settings, sender rules, and submission recovery files live in `%USERPROFILE%\.mado\mado-mail`. Removing the old project does not remove personal settings or credentials. Existing exported settings can still be imported through Rules.
 
 ## Documentation
 
-- [Project overview](docs/project-overview.md) — current user workflows, domain model, architecture, and limitations.
-- [Domain context](CONTEXT.md) — canonical terminology for Inbox triage, marks, and sender rules.
-- [App icon](docs/app-icon.md): Signal artwork and asset generation.
+- [Application guide](gpui-poc/README.md): controls, settings, recovery, and checks.
+- [Project overview](docs/project-overview.md): workflows, architecture, and limitations.
+- [Code context](CONTEXT.md): module responsibilities and triage terminology.
+- [App icon](docs/app-icon.md): Windows icon assets.
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js (Latest LTS recommended)
-- npm
-- **Google API Credentials**: The Electron app uses `client_secret.json` and `token.json` in `$HOME/.mado/mado-mail`. GPUI uses the same client file and Windows Credential Manager for its token.
-
-#### How to setup credentials:
-
-1. Go to the [Google Cloud Console Credentials page](https://console.cloud.google.com/apis/credentials).
-2. Create or select a project.
-3. Click **Create Credentials** -> **OAuth client ID**.
-4. Select **Desktop app** as the application type.
-5. Download the JSON file and rename it to `client_secret.json`.
-6. Place `client_secret.json` in `$HOME/.mado/mado-mail`.
-7. Run the authentication utility (e.g., the associated Go application) to generate the `token.json`.
-
-### Installation
-
-```bash
-npm install
-```
-
-### Development
-
-To run the application in development mode with Hot Module Replacement (HMR):
-
-```bash
-npm run dev
-```
-
-### Build
-
-To build the application for your specific platform:
-
-```bash
-# Windows
-npm run build:win
-
-# macOS
-npm run build:mac
-
-# Linux
-npm run build:linux
-```
-
-The build artifacts will be located in the `dist` directory.
-
-## Settings and pane sizes
-
-The desktop app saves preferences in `~/.mado/mado_mail/settings.json`. On Windows,
-this is `%USERPROFILE%\.mado\mado_mail\settings.json`.
-
-The file contains `theme`, `autoApply`, saved sender rules in `markedItems`, and
-`paneSizes`. The pane values are percentages: `inbox` is the left column's share
-of the window, and `list` is the email list's share of the left column while the
-reader is open.
-
-```json
-{
-  "theme": "frost",
-  "autoApply": false,
-  "markedItems": [],
-  "paneSizes": { "inbox": 75, "list": 60 }
-}
-```
-
-Drag the divider beside staging or above the reader to resize the panes. You can
-also focus a divider with Tab and use the arrow keys. Closing the reader keeps
-its last expanded size.
-
-Changes save automatically. The first launch without a settings file migrates
-existing browser-stored preferences. To edit the JSON yourself, close the app
-first and restart it afterward. Invalid files produce an error rather than being
-replaced. Gmail credentials and tokens remain in their separate files.
-
-Run `npm run test:settings` to test file persistence using temporary directories.
-
-## Recommended IDE Setup
-
-- [VSCode](https://code.visualstudio.com/)
-- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
-- [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
-- [React Developer Tools](https://react.dev/learn/react-developer-tools)
+Design and research documents retain migration history. Matched speed and total-memory comparisons against the former Electron app have not been performed.

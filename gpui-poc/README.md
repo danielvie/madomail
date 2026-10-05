@@ -1,6 +1,6 @@
 # Mado Mail GPUI application
 
-Windows Gmail triage app built with Rust and GPUI. The existing `gpui-poc` directory and executable name are retained so build scripts and the working HTML reader stay compatible. Electron remains available through `task dev`.
+Windows Gmail triage app built with Rust and GPUI. The existing `gpui-poc` directory and executable name are retained so build scripts and the working HTML reader stay compatible. The former Electron/React project has been removed.
 
 ## Run
 
@@ -18,12 +18,11 @@ task check-reader  # Native HTML, image permissions, resize, scrolling, and visi
 task check-window  # Open synthetic triage and capture only that window; leaves it open
 task build         # gpui-poc/target/release/mado-mail-poc.exe
 task clean         # Rust build artifacts only
-task dev           # Existing Electron app
 ```
 
 Requires stable Rust, Visual Studio C++ build tools with a Windows SDK, and Microsoft Edge WebView2 Runtime. Without Task, use `cargo run --manifest-path gpui-poc/Cargo.toml --release`.
 
-Windows builds embed the original application's `build/icon.ico` for the executable, taskbar, and native windows. No separate icon file is needed at runtime.
+Windows builds embed `build/icon.ico` for the executable, taskbar, and native windows. No separate icon file is needed at runtime.
 
 ## Gmail connection
 
@@ -131,9 +130,7 @@ Message label IDs come from the existing metadata requests. A separate read fetc
 
 ## Rules and settings migration
 
-1. Open the existing Electron app with `task dev`.
-2. In Rules, choose Export settings for GPUI. Save the JSON file.
-3. In the GPUI app's Rules view, choose Import settings and select that file.
+In Rules, choose Import settings and select an existing settings export or standalone rules JSON file. The former Electron app is no longer included; importing an existing export does not require it.
 
 Import accepts a combined settings export or a standalone rules array. A rules-only import keeps the current preferences; a combined import also restores custom themes and Auto-apply. Both preserve rule order, IDs, and actions. Old built-in theme choices become Frost unless a custom palette with that name is explicitly defined. Check the reported Auto-apply state after importing. Existing rules and preferences are backed up before replacement. Import replaces the rule list rather than merging it. Export settings still produces a combined, credential-free backup.
 

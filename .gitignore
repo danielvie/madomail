@@ -1,8 +1,4 @@
-node_modules
-dist
-out
 .DS_Store
-.eslintcache
 *.log*
 /gpui-poc/target/
 client_secret.json
