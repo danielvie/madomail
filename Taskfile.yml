@@ -3,13 +3,84 @@ version: '3'
 tasks:
 
   default:
+    desc: List available tasks
     cmds:
       - task --list
 
   run:
-    desc: Run the development server
+    desc: Run the Rust GPUI Gmail triage app
     cmds:
-      - task: dev
+      - cargo run --manifest-path gpui-poc/Cargo.toml --release
+
+  demo:
+    desc: Open the triage layout with synthetic mail and no Gmail access
+    cmds:
+      - cargo run --manifest-path gpui-poc/Cargo.toml --release -- --demo
+
+  check-triage:
+    desc: Check labels, row menus, mail drops, selection, reader, and pane layout with synthetic mail
+    deps: [build]
+    cmds:
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1
+
+  check-scrollbar:
+    desc: Check Inbox scrollbar dragging, paging, wheel, keyboard, and both reader layouts
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -ScrollbarOnly
+
+  check-detach:
+    desc: Check pinned reader windows, independent image controls, and unchanged Inbox state
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -DetachOnly
+
+  check-selection:
+    desc: Check middle-click select-all and clear-all behavior with synthetic messages
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -MiddleOnly
+
+  check-bulk-actions:
+    desc: Check selected-message Read, Unread, Archive, Trash, menus, and auto-apply
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -SelectedActionsOnly
+
+  check-spaces:
+    desc: Check inline spaces, fuzzy label selection, mail drops, and explicit Apply without Gmail
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -SpacesOnly
+
+  check-labels:
+    desc: Check label filters, hover assignment, searchable pickers, and safe targeting without Gmail
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -LabelsOnly
+
+  check-reader-visibility:
+    desc: Verify list clicks keep a hidden reader hidden and preserve its message
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -ReaderVisibilityOnly
+
+  check-label-removal:
+    desc: Check message-label removal, group confirmation, scope, and preserved INBOX without Gmail
+    cmds:
+      - cargo build --manifest-path gpui-poc/Cargo.toml
+      - powershell.exe -NoProfile -File gpui-poc/check-triage.ps1 -DebugBuild -LabelRemovalOnly
+
+  reader-demo:
+    desc: Open the synthetic HTML reader without accessing Gmail
+    cmds:
+      - cargo run --manifest-path gpui-poc/Cargo.toml --release -- --reader-demo
+
+  check-reader:
+    desc: Verify the restricted WebView2 reader using an offline synthetic email
+    deps: [build]
+    cmds:
+      - powershell.exe -NoProfile -File gpui-poc/check-reader.ps1
 
   dev:
     desc: Run the development server
@@ -23,16 +94,22 @@ tasks:
       - pnpm install
 
   build:
-    desc: Build the project
+    desc: Build the Rust GPUI Gmail triage app
     cmds:
-      - npm run build:win
+      - cargo build --manifest-path gpui-poc/Cargo.toml --release
 
   test:
-    desc: Run tests
+    desc: Test triage, settings, synthetic Gmail requests, and the reader
     cmds:
-      - npm test
+      - cargo test --manifest-path gpui-poc/Cargo.toml
+
+  check-window:
+    desc: Verify the synthetic triage window and capture only that window
+    deps: [build]
+    cmds:
+      - powershell.exe -NoProfile -File gpui-poc/check-window.ps1 -Demo
 
   clean:
-    desc: Clean build artifacts
+    desc: Clean Rust build artifacts
     cmds:
-      - rm -rf dist out build
+      - cargo clean --manifest-path gpui-poc/Cargo.toml

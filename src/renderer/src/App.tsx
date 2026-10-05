@@ -337,6 +337,18 @@ function Mailbox({ initialSettings }: { initialSettings: AppSettings }) {
     }
   }
 
+  function exportSettings(): void {
+    const data = { version: 1, rules: markedItems, autoApply, theme }
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    )
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'mado-mail-settings.json'
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-canvas text-ink">
       <header className="flex items-center gap-2 border-b border-line px-3 py-2">
@@ -446,6 +458,7 @@ function Mailbox({ initialSettings }: { initialSettings: AppSettings }) {
           markedItems={markedItems}
           onEdit={editMarkedItem}
           onDelete={deleteMarkedItem}
+          onExport={exportSettings}
         />
       ) : (
         <InboxPanes

@@ -6,7 +6,7 @@ import { homedir } from 'os'
 
 let authClient: any = null
 
-const MADO_PATH = join(homedir(), '.mado', 'mado_mail')
+const MADO_PATH = join(homedir(), '.mado', 'mado-mail')
 const SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 function getPaths() {

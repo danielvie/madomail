@@ -2,6 +2,14 @@
 
 A desktop Gmail client built with Electron, React, and TypeScript. Mado Mail provides a interface for managing your emails with a focus on speed.
 
+## Rust + GPUI application
+
+The Windows triage implementation lives in `gpui-poc/`. Run `task demo` to try the approved layout with synthetic mail, or `task run` to connect Gmail. It includes sender grouping, filtering, three-button selection, Archive/Delete staging, rules, saved preferences, and the separate restricted HTML reader. Writes require fresh `gmail.modify` consent. Failed and uncertain submissions remain visible for retry or reconciliation.
+
+Electron remains available through `task dev`. Its Rules view can export settings for import into GPUI. No existing credentials or settings are removed. Performance improvements have not yet been measured against Electron.
+
+See [GPUI setup, controls, migration, and checks](gpui-poc/README.md).
+
 ## Features
 
 - **Gmail Integration**: Direct integration with Gmail APIs.
@@ -30,7 +38,7 @@ A desktop Gmail client built with Electron, React, and TypeScript. Mado Mail pro
 
 - Node.js (Latest LTS recommended)
 - npm
-- **Google API Credentials**: This application requires `client_secret.json` and `token.json` to be present in `$HOME/.mado/mado_mail`.
+- **Google API Credentials**: The Electron app uses `client_secret.json` and `token.json` in `$HOME/.mado/mado-mail`. GPUI uses the same client file and Windows Credential Manager for its token.
 
 #### How to setup credentials:
 
@@ -39,7 +47,7 @@ A desktop Gmail client built with Electron, React, and TypeScript. Mado Mail pro
 3. Click **Create Credentials** -> **OAuth client ID**.
 4. Select **Desktop app** as the application type.
 5. Download the JSON file and rename it to `client_secret.json`.
-6. Place `client_secret.json` in `$HOME/.mado/mado_mail`.
+6. Place `client_secret.json` in `$HOME/.mado/mado-mail`.
 7. Run the authentication utility (e.g., the associated Go application) to generate the `token.json`.
 
 ### Installation

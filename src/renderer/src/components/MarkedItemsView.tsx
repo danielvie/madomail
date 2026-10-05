@@ -3,11 +3,13 @@ import type { MarkedItem } from '../types'
 export default function MarkedItemsView({
   markedItems,
   onEdit,
-  onDelete
+  onDelete,
+  onExport
 }: {
   markedItems: MarkedItem[]
   onEdit: (item: MarkedItem) => void
   onDelete: (id: string) => void
+  onExport: () => void
 }) {
   const [query, setQuery] = useState('')
   const items = useMemo(
@@ -17,6 +19,9 @@ export default function MarkedItemsView({
   return (
     <>
       <div className="flex shrink-0 items-center gap-2 border-b border-line bg-panel3/10 p-2">
+        <button onClick={onExport} className="shrink-0 rounded border border-line px-2 py-1 text-xs">
+          Export settings for GPUI
+        </button>
         <span className="ml-1 text-ink-dim">⌕</span>
         <input
           value={query}
