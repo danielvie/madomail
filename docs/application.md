@@ -7,22 +7,28 @@ Windows Gmail triage app built with Rust and GPUI. The repository root is a sing
 ```text
 task run           # Build and launch with Gmail
 task demo          # Synthetic Inbox; no credentials, network, or settings writes
-task reader-demo   # Synthetic HTML reader
 task test          # Model, settings, OAuth, MIME, and synthetic HTTP tests
-task check-triage  # Native menus, mail drops, reader, selection, rules, and pane checks
-task check-scrollbar # Inbox scrollbar checks in an isolated synthetic debug build
-task check-detach  # Pinned reader windows, image permissions, and window lifetime checks
-task check-selection # Middle-click selection across filtered messages and sender groups
-task check-bulk-actions # Selected-message actions, context menus, and auto-apply
-task check-reader  # Native HTML, image permissions, resize, scrolling, and visibility checks
-task check-window  # Open synthetic triage and capture only that window; leaves it open
 task build         # target/release/mado-mail.exe
+task install       # Build release and copy mado-mail.exe to ~/.local/bin
 task clean         # Rust build artifacts only
 ```
 
 Requires stable Rust, Visual Studio C++ build tools with a Windows SDK, and Microsoft Edge WebView2 Runtime. Without Task, use `cargo run --release`.
 
 Windows builds embed `build/icon.ico` for the executable, taskbar, and native windows. No separate icon file is needed at runtime.
+
+## Native UI checks
+
+Run the scripts directly after building:
+
+```text
+task build
+powershell.exe -NoProfile -File scripts/check-triage.ps1
+powershell.exe -NoProfile -File scripts/check-reader.ps1
+powershell.exe -NoProfile -File scripts/check-window.ps1 -Demo
+```
+
+For focused triage checks, run `cargo build`, then invoke `scripts/check-triage.ps1` with `-DebugBuild` and one switch: `-ScrollbarOnly`, `-DetachOnly`, `-MiddleOnly`, `-SelectedActionsOnly`, `-SpacesOnly`, `-LabelsOnly`, `-ReaderVisibilityOnly`, or `-LabelRemovalOnly`.
 
 ## Gmail connection
 
@@ -75,7 +81,7 @@ Check a message, sender group, or several messages, then use **Add label** in th
 
 Only confirmed writes update local labels. Failed messages stay unchanged; unknown results require Refresh before retrying. No automatic retry is sent. Unlike a space's Apply action, this operation never archives mail.
 
-`task check-labels` verifies the native controls with synthetic mail, including item-label clicks, OR filters, filtered groups, hover assignment scope and anchoring, keyboard removal, immediate assignment, partial results, floating placement without layout shifts, dismissal, both reader layouts, and a small window. It never contacts Gmail.
+`powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -LabelsOnly` verifies the native controls with synthetic mail, including item-label clicks, OR filters, filtered groups, hover assignment scope and anchoring, keyboard removal, immediate assignment, partial results, floating placement without layout shifts, dismissal, both reader layouts, and a small window. It never contacts Gmail.
 
 ### Removing message labels
 
@@ -83,7 +89,7 @@ Message-label chips show an X on hover or keyboard focus. On an individual messa
 
 Removal is always row-local, even when unrelated messages are checked. Filtered-out group members are excluded. The confirmation freezes its target IDs; changed filters dismiss it, and stale targets require a new confirmation. INBOX, unread, other labels, and staging remain unchanged. Only confirmed removals update local chips. If removing a label makes a message disappear from an active filter, its checkmark is cleared so later actions cannot target it invisibly.
 
-This X changes Gmail labels. The X on a filter chip still only clears a filter. Neither operation opens or drags a message. `task check-label-removal` checks both removal paths, cancellation, target scope, and partial failures with synthetic mail.
+This X changes Gmail labels. The X on a filter chip still only clears a filter. Neither operation opens or drags a message. `powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -LabelRemovalOnly` checks both removal paths, cancellation, target scope, and partial failures with synthetic mail.
 
 ### Spaces
 
@@ -93,7 +99,7 @@ Save space requires a name and at least one available user label. Cancel discard
 
 The label icon edits an empty saved space. Pending mail locks its labels until you Apply or Put back. Missing labels or an unavailable catalog block space submissions, not rechecks. Recovery keeps the exact submitted label IDs even if settings later change. Import is blocked while space edits or space decisions are outstanding. Spaces persist in settings; drafts and ordinary unsubmitted marks do not persist. The first version supports up to 100 spaces and 100 labels per space, using existing Gmail labels only.
 
-`task check-spaces` runs the synthetic native workflow and writes screenshots under `target/`. It does not contact Gmail or read personal settings.
+`powershell.exe -NoProfile -File scripts/check-triage.ps1 -DebugBuild -SpacesOnly` runs the synthetic native workflow and writes screenshots under `target/`. It does not contact Gmail or read personal settings.
 
 ### Keyboard
 
@@ -183,7 +189,7 @@ Writes currently run one message at a time for per-message outcomes. Large submi
 
 ## Reader and privacy
 
-The normal reader is an embedded pane in the main window. Its pop-out button copies the loaded, sanitized HTML, message details, labels, and current remote-image permission into a dedicated window without fetching the message from Gmail again. The new window starts at the top; the inline reader keeps its scroll position. Image controls then operate independently in each window. Detached readers remain open if you close the Inbox; the app exits after its last window closes. `task reader-demo` opens a standalone synthetic reader for diagnostics only. GPUI owns the controls; Wry hosts WebView2 for the sanitized HTML body. Embedded raster images display directly. HTTPS remote images load by default, including CSS background images. Block images disables remote loading for the current message; Allow images enables it again. Opening another message restores the default of allowing images. Remote images can disclose opens and IP addresses; blocking cannot undo requests already sent. Scripts and other disallowed content remain blocked regardless of image settings. Synthetic demos serve their remote-image fixture locally rather than making external requests.
+The normal reader is an embedded pane in the main window. Its pop-out button copies the loaded, sanitized HTML, message details, labels, and current remote-image permission into a dedicated window without fetching the message from Gmail again. The new window starts at the top; the inline reader keeps its scroll position. Image controls then operate independently in each window. Detached readers remain open if you close the Inbox; the app exits after its last window closes. `cargo run --release -- --reader-demo` opens a standalone synthetic reader for diagnostics only. GPUI owns the controls; Wry hosts WebView2 for the sanitized HTML body. Embedded raster images display directly. HTTPS remote images load by default, including CSS background images. Block images disables remote loading for the current message; Allow images enables it again. Opening another message restores the default of allowing images. Remote images can disclose opens and IP addresses; blocking cannot undo requests already sent. Scripts and other disallowed content remain blocked regardless of image settings. Synthetic demos serve their remote-image fixture locally rather than making external requests.
 
 Ammonia, Content Security Policy, and the native request guard block scripts, forms, frames, file URLs, downloads, dropped files, remote stylesheets/fonts, and disallowed requests. WebView2 uses an InPrivate profile, with scripts, host objects, web messaging, autofill, browser context menus, and browser-specific shortcuts disabled. User-initiated HTTP/HTTPS/mailto links open externally. The WebView never receives Gmail authorization tokens.
 

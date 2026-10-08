@@ -72,7 +72,7 @@ scripts/           PowerShell launchers and window capture for native checks
 licenses/          Bundled dependency license notices
 docs/              Application guide and design/research documentation
 docs/history/      Historical migration handoff
-Taskfile.yml       Run, build, test, clean, and focused native UI checks
+Taskfile.yml       Run, synthetic demo, build, test, and clean
 ```
 
 See `docs/application.md` for detailed behavior and checks.

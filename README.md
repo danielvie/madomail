@@ -14,12 +14,11 @@ A Windows Gmail triage app built with Rust and GPUI. The repository root is a si
 ```text
 task run           # Build and launch with Gmail
 task demo          # Synthetic Inbox, no Gmail access or personal settings writes
-task reader-demo   # Synthetic HTML reader
 task build         # Release executable in target/release/mado-mail.exe
+task install       # Build release and copy mado-mail.exe to ~/.local/bin
 task test          # Model, settings, OAuth, MIME, and synthetic HTTP tests
-task check-triage  # Native UI checks with synthetic mail
 task clean         # Remove Rust build artifacts
-task --list        # Additional focused UI checks
+task --list        # List tasks
 ```
 
 Without Task, run `cargo run --release`. Cargo fetches the required Rust dependencies.

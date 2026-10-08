@@ -32,6 +32,6 @@ Archive removes INBOX; Trash is not permanent deletion. Both preserve unread sta
 
 ## Build and checks
 
-Use `task run`, `task demo`, `task build`, `task test`, and the focused `task check-*` tasks. The repository root is a single Rust crate named `mado-mail`. Native check scripts live in `scripts/`; embedded UI icons live in `assets/icons/`, and synthetic mail lives in `fixtures/`. The runtime and build require no Node tooling. `build/icon.ico` is embedded by the Rust build.
+Use `task run`, `task demo`, `task build`, `task test`, and `task clean`. Run native UI checks directly with the PowerShell scripts after building; see `docs/application.md` for commands. The repository root is a single Rust crate named `mado-mail`. Native check scripts live in `scripts/`; embedded UI icons live in `assets/icons/`, and synthetic mail lives in `fixtures/`. The runtime and build require no Node tooling. `build/icon.ico` is embedded by the Rust build.
 
 See `docs/application.md` for detailed controls, settings migration, recovery, and verification limits.
